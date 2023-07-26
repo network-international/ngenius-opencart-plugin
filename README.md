@@ -1,6 +1,6 @@
 # N-Genius OpenCart Plugin
 
-![Banner](assets/banner.jpeg)
+![Banner](banner.jpeg)
 
 ## Installation
 
