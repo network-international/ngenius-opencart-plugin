@@ -36,6 +36,7 @@ class Request
             'headers' => [
                 'Authorization: Basic ' . $this->library->getApiKey(),
                 'Content-Type: application/vnd.ni-identity.v1+json',
+                "Content-Length: 0"
             ],
             'data'    => "",
             'uri'     => $this->library->getTokenRequestURL()
