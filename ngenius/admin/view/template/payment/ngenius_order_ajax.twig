@@ -1,0 +1,165 @@
+<table class="table table-bordered">
+    <tr>
+        <td>{{ column_order_id }}</td>
+        <td>#{{ order_id }}</td>
+    </tr>
+    <tr>
+        <td>{{ column_amount }}</td>
+        <td>{{ amount }}</td>
+    </tr>
+    <tr>
+        <td>{{ column_reference }}</td>
+        <td>{{ reference }}</td>
+    </tr>
+    <tr>
+        <td>{{ column_action }}</td>
+        <td>{{ action }}</td>
+    </tr>
+    <tr>
+        <td>{{ column_state }}</td>
+        <td>{{ state }}</td>
+    </tr>
+    <tr>
+        <td>{{ column_status }}</td>
+        <td>{{ status }}</td>
+    </tr>
+    <tr>
+        <td>{{ column_payment_id }}</td>
+        <td>{{ payment_id }}</td>
+    </tr>
+    <tr>
+        <td>{{ column_captured_amt }}</td>
+        <td>{{ captured_amt }}</td>
+    </tr>
+    <tr>
+        <td>{{ column_created_at }}</td>
+        <td>{{ created_at }}</td>
+    </tr>
+</table>
+
+<table class="table table-bordered">
+
+    <tr>
+        <td>{{ column_transactions }}</td>
+        <td>
+
+            <table class="table table-bordered">
+                <tr>
+                    {% if is_authorised %}
+                        <td class="text-center">
+                            {{ column_void }} :
+                            <button class="btn btn-primary button-command" data-type="void">{{ button_void }}</button>
+                        </td>
+                    {% endif %}
+                    {% if is_authorised %}
+                        <td class="text-center">
+                            {{ column_amount }} :
+                            <strong>{{ currency }}{{ max_capture_amount }}</strong>
+                            <input id="capture-amount" type="hidden" name="capture_amount"
+                                   value="{{ max_capture_amount }}"/>
+                            &nbsp;<button class="btn btn-primary button-command" data-type="capture">{{ button_capture }}</button>
+                        </td>
+                    {% endif %}
+                </tr>
+            </table>
+
+
+            <table class="table table-bordered">
+                <thead>
+                <tr>
+                    <td class="text-left">{{ column_customer_transaction_id }}</td>
+                    <td class="text-left">{{ column_customer_transaction_date }}</td>
+                    <td class="text-left">{{ column_customer_transaction_amount }}</td>
+                    <td class="text-left">{{ column_customer_transaction_capture_id }}</td>
+                    <td class="text-left">{{ column_customer_transaction_action }}</td>
+                </tr>
+                </thead>
+                <tbody>
+
+                {% for transaction in transactions %}
+                    <tr>
+                        <td>{{ transaction.customer_transaction_id }}</td>
+                        <td>{{ transaction.date_added }}</td>
+                        <td>{{ transaction.amount }}</td>
+                        <td>{{ transaction.id }}</td>
+
+                        <td>
+                            {% if transaction.refund_button %}
+                                Refund {{ column_amount }} :
+                                {{ currency }}
+                                <input id="{{ transaction.capture_id }}" size="8" text="text" name="refund_amount"
+                                       value="{{ max_refund_amount }}"/>
+                                <button class="btn btn-primary button-command" data-type="refund"
+                                   data-capture="{{ transaction.id }}">{{ button_refund }}</button>
+                            {% else %}
+                                {{ transaction.message }}
+                            {% endif %}
+                        </td>
+
+                    </tr>
+                {% endfor %}
+
+
+                </tbody>
+            </table>
+        </td>
+    </tr>
+
+</table>
+
+
+<script type="text/javascript">
+  $('.button-command').on('click', function () {
+    var type = $(this).attr('data-type')
+    var capture_id = $(this).attr('data-capture')
+    var confirm_text = ''
+    var clicked_button = $(this)
+
+    if (type === 'void') {
+      confirm_text = '{{ text_confirm_void }}'
+    } else if (type === 'capture') {
+      confirm_text = '{{ text_confirm_capture }}' + '?'
+    } else if (type === 'refund') {
+      confirm_text = '{{ text_confirm_refund }}' + '?'
+    }
+
+    if (confirm(confirm_text)) {
+        const buttonHTML = clicked_button.html();
+      $.ajax({
+        url: 'index.php?route=extension/ngenius/payment/ngenius|transactionCommand&user_token={{ user_token }}',
+        type: 'post',
+        data: {
+          type: type,
+          capture_id: capture_id,
+          amount: $(this).prev('input').val(),
+          order_id: '{{ order_id }}'
+        },
+        dataType: 'json',
+        beforeSend: function () {
+
+            clicked_button.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
+            $('.alert').hide().removeClass('alert-success alert-danger')
+        },
+        complete: function () {
+            clicked_button.html(buttonHTML);
+        },
+        success: function (json) {
+          const notification = $('#notification');
+          notification.removeClass('alert alert-danger alert-success');
+          console.log(json);
+          if (json.error) {
+            notification.show().addClass('alert alert-danger').html('<i class="fa fa-check-circle"></i> ' + json.error)
+          }
+
+          if (json.success) {
+            $('#notification').show().addClass('alert alert-success').html('<i class="fa fa-exclamation-circle"></i> ' + json.success)
+            setTimeout(function () {
+              location.reload()
+            }, 2000)
+          }
+
+        }
+      })
+    }
+  })
+</script>

@@ -1,0 +1,30 @@
+<h3>{{ text_payment_info }}</h3>
+<h3>{{ text_payment_info }}</h3>
+<div id="notification" style="display: none"></div>
+<div id="table-action"></div>
+
+<script type="text/javascript">
+    const buttonHTML = $('#button-filter').html();
+  function getTransaction () {
+    $.ajax({
+      url: 'index.php?route=extension/ngenius/payment/ngenius|getTransaction&user_token={{ user_token }}',
+      dataType: 'html',
+      data: {
+        order_id: '{{ order_id }}'
+      },
+      beforeSend: function () {
+          $('#button-filter').html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
+        $('#table-action').html('<i class="braintree-loading fa fa-spinner fa-spin fa-5x" style="text-align: center; margin: 0 auto; width: 100%; font-size: 5em;"></i>');
+      },
+      complete: function () {
+          $('#button-filter').html(buttonHTML);
+      },
+      success: function (html) {
+        $('#table-action').html(html);
+
+      }
+    });
+  }
+
+  getTransaction();
+</script>
