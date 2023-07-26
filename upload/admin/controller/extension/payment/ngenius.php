@@ -241,9 +241,6 @@ class ControllerExtensionPaymentNgenius extends Controller
         );
 
         foreach ($customerTransaction as $key => $transaction) {
-            if ($data['action'] === 'PURCHASE' && $data['state'] === 'PURCHASED') {
-                $transaction['refund_button'] = true;
-            }
             $jsonData = json_decode($transaction['description'], true);
             if ($jsonData) {
                 foreach ($jsonData as $key => $value) {
@@ -277,6 +274,11 @@ class ControllerExtensionPaymentNgenius extends Controller
                     $data['transactions'][] = $transaction;
                 }
             }
+        }
+
+        if (($data['action'] === 'PURCHASE' && ($data['state'] === 'PURCHASED' || $data["state"] === "PARTIALLY_REFUNDED"))
+            || ($data['action'] === 'SALE' && ($data['state'] === 'CAPTURED' || $data["state"] === "PARTIALLY_REFUNDED"))) {
+            $data["transactions"][sizeof($customerTransaction)-1]['refund_button'] = true;
         }
 
         $data['max_refund_amount']  = number_format($data['captured_amt'], 2);
@@ -394,13 +396,24 @@ class ControllerExtensionPaymentNgenius extends Controller
                     $json['error'] = $orderInfo;
                 }
             } elseif ($data['action'] === 'SALE' && $this->request->post['type'] == 'refund' && $this->request->post['amount'] && $this->request->post['capture_id']) {
+
+                $refundUrl = null;
+                if ($data["payment_id"] === $this->request->post['capture_id']) {
+                    $cupPayment = $validate->orderValidate(
+                        $http->placeRequest($transfer->create($request->fetchOrder($data['reference']), $token))
+                    );
+                    if(isset($cupPayment["_embedded"]["payment"][0]["_embedded"]["cnp:capture"][0]["_links"]["cnp:refund"]["href"])) {
+                        $refundUrl = $cupPayment["_embedded"]["payment"][0]["_embedded"]["cnp:capture"][0]["_links"]["cnp:refund"]["href"];
+                    }
+                }
                 $orderInfo = $validate->refundValidate(
                     $http->placeRequest(
                         $transfer->create(
                             $request->refundOrder(
                                 $data,
                                 $this->request->post['amount'],
-                                $this->request->post['capture_id']
+                                $this->request->post['capture_id'],
+                                $refundUrl
                             ),
                             $token
                         )
@@ -425,7 +438,7 @@ class ControllerExtensionPaymentNgenius extends Controller
                     $this->model_extension_payment_ngenius->addTransaction(
                         $order['customer_id'],
                         json_encode($captureIdArr),
-                        $orderInfo['refunded_amt'],
+                        $this->request->post['amount'],
                         $order['order_id']
                     );
                     $json['success'] = self::AMOUNT_LITERAL . $order['currency_code'] . number_format(
@@ -455,7 +468,9 @@ class ControllerExtensionPaymentNgenius extends Controller
                     )
                 );
                 $orderStatus = json_decode($orderStatus, true);
-                if (isset($orderStatus['_embedded']['payment'][0]['_links']['cnp:refund'])) {
+                if ($orderStatus['_embedded']['payment'][0]["paymentMethod"]["name"] === "CHINA_UNION_PAY") {
+                    $json['error'] = "This order is non-refundable";
+                } elseif (isset($orderStatus['_embedded']['payment'][0]['_links']['cnp:refund'])) {
                     $refundLink = $orderStatus['_embedded']['payment'][0]['_links']['cnp:refund']['href'];
                     // If we have a refund link then the amount has been captured and can be refunded as normal
                     $data['uri'] = $refundLink;
@@ -464,7 +479,22 @@ class ControllerExtensionPaymentNgenius extends Controller
                             $transfer->create(
                                 $request->refundPurchase(
                                     $data,
-                                    $this->request->post['amount'],
+                                    $this->request->post['amount']
+                                ),
+                                $token
+                            )
+                        )
+                    );
+                } elseif (isset($orderStatus['_embedded']['cnp:capture'][0]['_links']['cnp:refund'])) {
+                    $refundLink = $orderStatus['_embedded']['cnp:capture'][0]['_links']['cnp:refund']['href'];
+                    // If we have a refund link then the amount has been captured and can be refunded as normal
+                    $data['uri'] = $refundLink;
+                    $orderInfo   = $validate->refundValidate(
+                        $http->placeRequest(
+                            $transfer->create(
+                                $request->refundPurchase(
+                                    $data,
+                                    $this->request->post['amount']
                                 ),
                                 $token
                             )
@@ -484,7 +514,7 @@ class ControllerExtensionPaymentNgenius extends Controller
                         )
                     );
                 }
-                if (is_array($orderInfo)) {
+                if (is_array($orderInfo) && !isset($json['error'])) {
                     $data_table['state'] = $orderInfo['state'];
                     if ($orderInfo['total_refunded'] === $orderInfo['captured_amt']) {
                         $data_table['status'] = $this->ngenius::NG_F_REFUNDED;
@@ -503,7 +533,7 @@ class ControllerExtensionPaymentNgenius extends Controller
                     $this->model_extension_payment_ngenius->addTransaction(
                         $order['customer_id'],
                         json_encode($captureIdArr),
-                        $orderInfo['refunded_amt'],
+                        $this->request->post['amount'],
                         $order['order_id']
                     );
                     $json['success'] = self::AMOUNT_LITERAL . $order['currency_code'] . number_format(

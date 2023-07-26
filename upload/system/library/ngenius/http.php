@@ -23,6 +23,7 @@ class Http
         curl_setopt($ch, CURLOPT_URL, $transfer->getUri());
         curl_setopt($ch, CURLOPT_HTTPHEADER, $transfer->getHeaders());
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
 
         if ("POST" === $transfer->getMethod()) {
             curl_setopt($ch, CURLOPT_POST, 1);
