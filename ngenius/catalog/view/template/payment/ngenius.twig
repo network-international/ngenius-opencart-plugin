@@ -1,0 +1,27 @@
+{% if error %}
+    <div class="alert alert-danger alert-dismissible">Payment Error: {{ error }}</div>
+{% else %}
+
+    <div class="container">
+        <div class="row align-items-center form-group">
+            <strong class="text-left">Please proceed to "Confirm".Then you will be redirected to the N-Genius Online Payment
+                Gateway.</strong>
+        </div>
+    </div>
+
+    <form class="my-3 row align-items-center form-group" action="{{ action }}" method="post" name="ngenius_online_payment" id="ngenius_online_payment">
+        <div class="buttons text-center">
+            <div class="pull-right">
+                <input type="button" value="Confirm" class="btn btn-primary"/>
+            </div>
+        </div>
+    </form>
+    <script type='text/javascript'>
+      $(function () {
+        $('input[type=button]').click(function () {
+          $('form#ngenius_online_payment').submit()
+          $('input[type=button]').attr('disabled', true)
+        })
+      })
+    </script>
+{% endif %}

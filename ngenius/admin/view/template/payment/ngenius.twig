@@ -1,0 +1,297 @@
+{{ header }}{{ column_left }}
+<div id="content">
+    <div class="page-header">
+        <div class="container-fluid">
+            <div class="d-flex flex-row-reverse">
+                <a href="{{ cancel }}" data-toggle="tooltip" title="{{ button_cancel }}"
+                   class="btn btn-default"><em class="fa fa-reply"></em></a>
+                <button type="submit" form="form-payment" data-toggle="tooltip" title="{{ button_save }}"
+                        class="btn btn-primary">
+                    <em class="fa fa-save"></em></button>
+            </div>
+            <h1><strong>{{ heading_title }}</strong></h1>
+            <ul class="breadcrumb">
+                {% for breadcrumb in breadcrumbs %}
+                    <li class="breadcrumb-item d-inline"><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    <div class="container-fluid">
+        {% if error_warning %}
+            <div class="alert alert-danger alert-dismissible"><i
+                        class="fa fa-exclamation-circle"></i> {{ error_warning }}
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+            </div>
+        {% endif %}
+        <div class="border panel panel-default">
+            <div class="border-bottom panel-heading">
+                <h5 class="m-3 panel-title"><em class="fa fa-pencil"></em> {{ text_edit }}
+            </div>
+            <div class="panel-body bg-white">
+                <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-payment"
+                      class="form-horizontal py-4">
+
+                    <div class="row align-items-center form-group">
+                        <label class="d-flex flex-row-reverse col-sm-2 col-form-label control-label" for="input-status">{{ status }}</label>
+                        <div class="col-sm-2">
+                            <select name="payment_ngenius_status" id="input-status" class="form-control">
+                                {% if payment_ngenius_status %}
+                                    <option value="1" selected="selected">{{ text_enabled }}</option>
+                                    <option value="0">{{ text_disabled }}</option>
+                                {% else %}
+                                    <option value="1">{{ text_enabled }}</option>
+                                    <option value="0" selected="selected">{{ text_disabled }}</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="my-4 row align-items-center form-group">
+                        <label class="col-form-label d-flex flex-row-reverse col-sm-2 col-form-label control-label" for="input-total"><span data-toggle="tooltip"
+                                                                                      title="{{ title }}">{{ title }}</span></label>
+                        <div class="col-sm-4">
+                            <input type="text" name="payment_ngenius_title" value="{{ payment_ngenius_title }}"
+                                   placeholder="{{ title }}" id="input-total" class="form-control"/>
+                        </div>
+                    </div>
+                    <div class="my-4 row align-items-center form-group">
+                        <label class="col-form-label d-flex flex-row-reverse col-sm-2 col-form-label control-label" for="input-status">{{ environment }}</label>
+                        <div class="col-sm-2">
+                            <select name="payment_ngenius_environment" id="input-order-status" class="form-control">
+                                {% if payment_environment == text_uat %}
+                                    <option value="{{ text_uat }}" selected="selected">{{ uat }}</option>
+                                    <option value="{{ text_live }}">{{ live }}</option>
+                                {% elseif payment_environment == text_live %}
+                                    <option value="{{ text_uat }}">{{ uat }}</option>
+                                    <option value="{{ text_live }}" selected="selected">{{ live }}</option>
+                                {% else %}
+                                    <option value="{{ text_uat }}">{{ uat }}</option>
+                                    <option value="{{ text_live }}">{{ live }}</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="my-4 row align-items-center form-group">
+                        <label class="col-form-label d-flex flex-row-reverse col-sm-2 col-form-label control-label" for="input-total"><span data-toggle="tooltip"
+                                                                                      title="{{ uat_api_url_value }}">{{ uat_api_url_text }}</span></label>
+                        <div class="col-sm-4">
+                            <input type="text" name="payment_ngenius_uat_api_url"
+                                   value="{{ payment_ngenius_uat_api_url }}" placeholder="{{ uat_api_url_text }}"
+                                   class="form-control"/>
+                        </div>
+                    </div>
+                    <div class="my-4 row align-items-center form-group">
+                        <label class="col-form-label d-flex flex-row-reverse col-sm-2 col-form-label control-label" for="input-total"><span data-toggle="tooltip"
+                                                                                      title="{{ live_api_url_value }}">{{ live_api_url_text }}</span></label>
+                        <div class="col-sm-4">
+                            <input type="text" name="payment_ngenius_live_api_url"
+                                   value="{{ payment_ngenius_live_api_url }}" placeholder="{{ live_api_url_text }}"
+                                   id="input-total" class="form-control"/>
+                        </div>
+                    </div>
+                    <div class="my-4 row align-items-center form-group">
+                        <label class="col-form-label d-flex flex-row-reverse col-sm-2 col-form-label control-label" for="input-status">{{ payment_action }}</label>
+                        <div class="col-sm-2">
+                            <select name="payment_ngenius_payment_action" id="input-order-status" class="form-control">
+                                {% if payment_actions == text_sale %}
+                                    <option value="{{ text_authorize }}">{{ authorize }}</option>
+                                    <option value="{{ text_sale }}" selected="selected">{{ sale }}</option>
+                                    <option value="{{ text_purchase }}">{{ purchase }}</option>
+                                {% elseif payment_actions == text_authorize %}
+                                    <option value="{{ text_authorize }}" selected="selected">{{ authorize }}</option>
+                                    <option value="{{ text_sale }}">{{ sale }}</option>
+                                    <option value="{{ text_purchase }}">{{ purchase }}</option>
+                                {% elseif payment_actions == text_purchase %}
+                                    <option value="{{ text_authorize }}">{{ authorize }}</option>
+                                    <option value="{{ text_sale }}">{{ sale }}</option>
+                                    <option value="{{ text_purchase }}" selected="selected">{{ purchase }}</option>
+                                {% else %}
+                                    <option value="{{ text_authorize }}">{{ authorize }}</option>
+                                    <option value="{{ text_sale }}">{{ sale }}</option>
+                                    <option value="{{ text_purchase }}">{{ purchase }}</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="my-4 row align-items-center form-group">
+                        <label class="col-form-label d-flex flex-row-reverse col-sm-2 col-form-label control-label" for="input-order-status">{{ order_status }}</label>
+                        <div class="col-sm-2">
+                            <select name="payment_ngenius_order_status_id" id="input-order-status" class="form-control">
+                                {% for status in order_statuses %}
+                                    <option value="{{ status.value }}" selected="selected">{{ status.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="my-4 row align-items-center form-group">
+                        <label class="col-form-label d-flex flex-row-reverse col-sm-2 col-form-label control-label" for="input-total"><span data-toggle="tooltip"
+                                                                                      title="{{ outlet_ref }}">{{ outlet_ref }}</span></label>
+                        <div class="col-sm-4">
+                            <input type="text" name="payment_ngenius_outlet_ref"
+                                   value="{{ payment_ngenius_outlet_ref }}" placeholder="{{ outlet_ref }}"
+                                   id="input-total" class="form-control"/>
+                        </div>
+                    </div>
+                    <div class="my-4 row align-items-center form-group">
+                        <label class="col-form-label d-flex flex-row-reverse col-sm-2 col-form-label control-label" for="">
+                            <span data-toggle="tool-tip" title="{{ add_outlet_ref }}">{{ add_outlet_ref }}</span>
+                        </label>
+                        <div class="col-sm-2">
+                            <button class="btn btn-primary" name="add_outlet_ref"
+                                    id="add_outlet_ref">{{ add_outlet_button_text }}</button>
+                        </div>
+                    </div>
+                    <div id="additional_outlet_fields">
+                        {% set i = 0 %}
+                        {% for extra in payment_ngenius_extra_outlet %}
+                            <div class="my-4 row align-items-center form-group">
+                                <label class="col-form-label d-flex flex-row-reverse col-sm-2 col-form-label control-label">Currency &amp; Outlet Reference ID {{ i + 1 }}</label>
+                                <div class="col-sm-1">
+                                    <input type="text" name="payment_ngenius_extra_currency[]"
+                                           placeholder="Currency" class="form-control"
+                                           value="{{ payment_ngenius_extra_currency[i] }}">
+                                </div>
+                                <div class="col-sm-2">
+                                    <input type="text" name="payment_ngenius_extra_outlet[]"
+                                           placeholder="Outlet Reference" class="form-control"
+                                           value="{{ payment_ngenius_extra_outlet[i] }}">
+                                </div>
+                                <div class="col-sm-1">
+                                    <button class="btn btn-danger"
+                                            data-id="{{ i }}"
+                                            name="remove_outlet_ref">{{ remove_outlet_button_text }}</button>
+                                </div>
+                            </div>
+                            {% set i = i + 1 %}
+                        {% endfor %}
+                    </div>
+                    <div class="my-4 row align-items-center form-group">
+                        <label class="col-form-label d-flex flex-row-reverse col-sm-2 col-form-label control-label" for="input-total"><span data-toggle="tooltip"
+                                                                                      title="{{ api_key }}">{{ api_key }}</span></label>
+                        <div class="col-sm-4">
+                            <input type="text" name="payment_ngenius_api_key" value="{{ payment_ngenius_api_key }}"
+                                   placeholder="{{ api_key }}" id="input-total" class="form-control"/>
+                        </div>
+                    </div>
+                    <div class="my-4 row align-items-center form-group">
+                        <label class="col-form-label d-flex flex-row-reverse col-sm-2 col-form-label control-label" for="input-total"><span data-toggle="tooltip"
+                                                                                      title="{{ http_version }}">{{ http_version }}</span></label>
+                        <div class="col-sm-2">
+                            <select name="payment_ngenius_http_version" id="input-order-status" class="form-control">
+                                {% if http_versions == text_v_none %}
+                                    <option value="{{ text_v_none }}" selected="selected">{{ v_none }}</option>
+                                    <option value="{{ text_v_1_0 }}">{{ v_1_0 }}</option>
+                                    <option value="{{ text_v_1_1 }}">{{ v_1_1 }}</option>
+                                    <option value="{{ text_v_2_0 }}">{{ v_2_0 }}</option>
+                                    <option value="{{ text_v_2_TLS }}">{{ v_2_TLS }}</option>
+                                    <option value="{{ text_v_2_PRIOR }}">{{ v_2_PRIOR }}</option>
+                                {% elseif http_versions == text_v_1_0 %}
+                                    <option value="{{ text_v_none }}">{{ v_none }}</option>
+                                    <option value="{{ text_v_1_0 }}" selected="selected">{{ v_1_0 }}</option>
+                                    <option value="{{ text_v_1_1 }}">{{ v_1_1 }}</option>
+                                    <option value="{{ text_v_2_0 }}">{{ v_2_0 }}</option>
+                                    <option value="{{ text_v_2_TLS }}">{{ v_2_TLS }}</option>
+                                    <option value="{{ text_v_2_PRIOR }}">{{ v_2_PRIOR }}</option>
+                                {% elseif http_versions == text_v_1_1 %}
+                                    <option value="{{ text_v_none }}">{{ v_none }}</option>
+                                    <option value="{{ text_v_1_0 }}">{{ v_1_0 }}</option>
+                                    <option value="{{ text_v_1_1 }}" selected="selected">{{ v_1_1 }}</option>
+                                    <option value="{{ text_v_2_0 }}">{{ v_2_0 }}</option>
+                                    <option value="{{ text_v_2_TLS }}">{{ v_2_TLS }}</option>
+                                    <option value="{{ text_v_2_PRIOR }}">{{ v_2_PRIOR }}</option>
+                                {% elseif http_versions == text_v_2_0 %}
+                                    <option value="{{ text_v_none }}">{{ v_none }}</option>
+                                    <option value="{{ text_v_1_0 }}">{{ v_1_0 }}</option>
+                                    <option value="{{ text_v_1_1 }}">{{ v_1_1 }}</option>
+                                    <option value="{{ text_v_2_0 }}" selected="selected">{{ v_2_0 }}</option>
+                                    <option value="{{ text_v_2_TLS }}">{{ v_2_TLS }}</option>
+                                    <option value="{{ text_v_2_PRIOR }}">{{ v_2_PRIOR }}</option>
+                                {% elseif http_versions == text_v_2_TLS %}
+                                    <option value="{{ text_v_none }}">{{ v_none }}</option>
+                                    <option value="{{ text_v_1_0 }}">{{ v_1_0 }}</option>
+                                    <option value="{{ text_v_1_1 }}">{{ v_1_1 }}</option>
+                                    <option value="{{ text_v_2_0 }}">{{ v_2_0 }}</option>
+                                    <option value="{{ text_v_2_TLS }}" selected="selected">{{ v_2_TLS }}</option>
+                                    <option value="{{ text_v_2_PRIOR }}">{{ v_2_PRIOR }}</option>
+                                {% elseif http_versions == text_v_2_PRIOR %}
+                                    <option value="{{ text_v_none }}">{{ v_none }}</option>
+                                    <option value="{{ text_v_1_0 }}">{{ v_1_0 }}</option>
+                                    <option value="{{ text_v_1_1 }}">{{ v_1_1 }}</option>
+                                    <option value="{{ text_v_2_0 }}">{{ v_2_0 }}</option>
+                                    <option value="{{ text_v_2_TLS }}">{{ v_2_TLS }}</option>
+                                    <option value="{{ text_v_2_PRIOR }}" selected="selected">{{ v_2_PRIOR }}</option>
+                                {% else %}
+                                    <option value="{{ text_v_none }}">{{ v_none }}</option>
+                                    <option value="{{ text_v_1_0 }}">{{ v_1_0 }}</option>
+                                    <option value="{{ text_v_1_1 }}">{{ v_1_1 }}</option>
+                                    <option value="{{ text_v_2_0 }}">{{ v_2_0 }}</option>
+                                    <option value="{{ text_v_2_TLS }}">{{ v_2_TLS }}</option>
+                                    <option value="{{ text_v_2_PRIOR }}">{{ v_2_PRIOR }}</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="my-4 row align-items-center form-group">
+                        <label class="col-form-label d-flex flex-row-reverse col-sm-2 col-form-label control-label" for="input-status">{{ debug }}</label>
+                        <div class="col-sm-2">
+                            <select name="payment_ngenius_debug" id="input-status" class="form-control">
+                                {% if payment_ngenius_debug %}
+                                    <option value="1" selected="selected">{{ text_debug_yes }}</option>
+                                    <option value="0">{{ text_debug_no }}</option>
+                                {% else %}
+                                    <option value="1">{{ text_debug_yes }}</option>
+                                    <option value="0" selected="selected">{{ text_debug_no }}</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="my-4 row align-items-center form-group">
+                        <label class="col-form-label d-flex flex-row-reverse col-sm-2 col-form-label control-label" for="input-sort-order">{{ sort_order }}</label>
+                        <div class="col-sm-1">
+                            <input type="text" name="payment_ngenius_sort_order"
+                                   value="{{ payment_ngenius_sort_order }}" placeholder="{{ entry_sort_order }}"
+                                   id="input-sort-order" class="form-control"/>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    $('#add_outlet_ref').on('click', (e) => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        const additionalOutletFields = $('#additional_outlet_fields');
+        let additionals = additionalOutletFields.find('div.form-group');
+        let nextIndex = additionals.length + 1;
+        const newdiv = document.createElement('div');
+        $(newdiv).addClass('my-4 row align-items-center form-group');
+        newdiv.innerHTML = `
+    <label class="col-form-label d-flex flex-row-reverse col-sm-2 col-form-label control-label">Currency &amp; Outlet Reference ID ${nextIndex}</label>
+    <div class="col-sm-1">
+        <input type="text" name="payment_ngenius_extra_currency[]"
+        placeholder="Currency" class="form-control">
+    </div>
+    <div class="col-sm-2">
+        <input type="text" name="payment_ngenius_extra_outlet[]"
+        placeholder="Outlet Reference" class="form-control">
+    </div>
+    <div class="col-sm-1">
+                                    <button class="btn btn-danger"
+                                            data-id="${nextIndex}"
+                                            name="remove_outlet_ref">Delete Reference</button>
+                                </div>
+    `;
+        additionalOutletFields.append(newdiv);
+    });
+
+    $('body').on('click', 'button[name="remove_outlet_ref"]', (e) => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        const formGroup = $(e.currentTarget).closest('div.form-group');
+        formGroup.remove();
+    });
+</script>
+
+{{ footer }}
