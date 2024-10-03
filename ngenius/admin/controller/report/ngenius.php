@@ -7,7 +7,7 @@ use Opencart\System\Engine\Controller;
 class Ngenius extends Controller
 {
     public const REPORT_EXTENSION_LITERAL = "extension/ngenius/report/ngenius";
-    public const TOKEN_LITERAL = "user_token=";
+    public const TOKEN_LITERAL            = "user_token=";
 
     public function index()
     {
@@ -197,7 +197,7 @@ class Ngenius extends Controller
         $pagination->total = $order_total;
         $pagination->page  = $page;
         $pagination->limit = $this->config->get('config_limit_admin');
-        $pagination->url = $this->url->link(
+        $pagination->url   = $this->url->link(
             self::REPORT_EXTENSION_LITERAL,
             self::TOKEN_LITERAL . $this->session->data['user_token'] . '&page={page}',
             true
@@ -208,12 +208,12 @@ class Ngenius extends Controller
             $this->language->get('text_pagination'),
             ($order_total) ? (($page - 1) * $this->config->get('config_limit_admin')) + 1 : 0,
             ((($page - 1) * $this->config->get(
-                'config_limit_admin'
-            )) > ($order_total - $this->config->get(
-                'config_limit_admin'
-            ))) ? $order_total : ((($page - 1) * $this->config->get(
-                'config_limit_admin'
-            )) + $this->config->get('config_limit_admin')),
+                        'config_limit_admin'
+                    )) > ($order_total - $this->config->get(
+                        'config_limit_admin'
+                    ))) ? $order_total : ((($page - 1) * $this->config->get(
+                        'config_limit_admin'
+                    )) + $this->config->get('config_limit_admin')),
             $order_total,
             ceil($order_total / $this->config->get('config_limit_admin'))
         );

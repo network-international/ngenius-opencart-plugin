@@ -1,0 +1,20 @@
+= 1.1.0 - 2024-10-03 =
+ * Tested on OpenCart 4.0.2.3 , PHP 8.1.
+ * Add VISA additional mandatory fields to the Order API Request Body.
+ * Improve support for China Union Pay and Samsung Pay.
+ * Improve support for UGX, XOF, OMR, BHD and KWD currency decimals.
+ * Update to N-Genius Common Class 1.0.9b.
+ * Send custom order meta to N-Genius merchant defined data.
+ * Bugs fixes and improvements.
+ * Improve speed of N-Genius requests.
+
+= 1.0.3 - 2023-07-26  =
+  * Tested on OpenCart 4.0.2.2 , PHP 8.1
+  * Initial version for OpenCart 4.
+
+= 1.0.2 - 2023-07-26 =
+ * Tested on OpenCart 3.0.3.8, PHP 7.4
+ * Bug fixes and improvements.
+
+= 1.0.1 - 2022-12-22 =
+ * Initial release.

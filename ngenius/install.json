@@ -1,8 +1,8 @@
 {
-	"name": "N-Genius Payment Gateway",
-    "code": "ngenius",
-    "license": "GPL",
-	"version": "1.0.3",
-	"author": "Network International",
-	"link": "https://github.com/network-international/ngenius-opencart-plugin"
+  "name": "N-Genius Payment Gateway",
+  "code": "ngenius",
+  "license": "GPL",
+  "version": "1.1.0",
+  "author": "Network International",
+  "link": "https://github.com/network-international/ngenius-opencart-plugin"
 }

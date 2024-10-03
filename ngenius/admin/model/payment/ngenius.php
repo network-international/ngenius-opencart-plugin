@@ -2,7 +2,12 @@
 
 namespace Opencart\Admin\Model\Extension\Ngenius\Payment;
 
+use Ngenius\NgeniusCommon\NgeniusHTTPCommon;
+use Ngenius\NgeniusCommon\NgeniusHTTPTransfer;
 use Opencart\System\Engine\Model;
+use Opencart\System\Library\Ngenius as NgeniusTools;
+use Opencart\System\Library\Tools\Request;
+use Opencart\System\Library\Tools\Validate;
 
 /**
  * ModelExtensionPaymentNgenius class
@@ -10,6 +15,7 @@ use Opencart\System\Engine\Model;
 class Ngenius extends Model
 {
     public const UPDATE_LITERAL = "UPDATE ";
+    private NgeniusTools $ngenius;
 
     /**
      * Table Installation
@@ -51,6 +57,7 @@ class Ngenius extends Model
      * Get order details from table
      *
      * @param int $orderId
+     *
      * @return mixed
      */
     public function getOrder(int $orderId): mixed
@@ -65,12 +72,13 @@ class Ngenius extends Model
      * Get customer transaction details
      *
      * @param int $orderId
+     *
      * @return mixed
      */
     public function getCustomerTransaction(int $orderId): mixed
     {
         $sql   = "SELECT * FROM " . DB_PREFIX . "customer_transaction"
-            . " WHERE order_id = '" . $orderId . "' ORDER BY customer_transaction_id DESC";
+                 . " WHERE order_id = '" . $orderId . "' ORDER BY customer_transaction_id DESC";
         $query = $this->db->query($sql);
 
         return $query->rows;
@@ -103,6 +111,7 @@ class Ngenius extends Model
      *
      * @param array $data_table
      * @param int $order_id
+     *
      * @return mixed
      */
     public function updateTable(array $data_table, int $order_id): mixed
@@ -111,6 +120,7 @@ class Ngenius extends Model
         if (isset($data_table['captured_amt'])) {
             $query = ", captured_amt = '{$data_table['captured_amt']}'";
         }
+
         return $this->db->query(
             self::UPDATE_LITERAL . DB_PREFIX
             . "ngenius_networkinternational SET state = '{$data_table['state']}',
@@ -204,5 +214,40 @@ class Ngenius extends Model
                 );
             }
         }
+    }
+
+    /**
+     * @param $ngeniusReference
+     *
+     * @return array|string|bool
+     */
+    public function getNGeniusOrder($ngeniusReference): array|string|bool
+    {
+        $this->ngenius = new NgeniusTools($this->registry);
+
+        $request = new Request($this->ngenius);
+
+        $httpTransfer = new NgeniusHTTPTransfer("");
+
+        $httpTransfer->setTokenHeaders($this->ngenius->getApiKey());
+        $httpTransfer->setHttpVersion($this->ngenius->getHttpVersion());
+
+        $httpTransfer->build($request->tokenRequest());
+
+        $token = NgeniusHTTPCommon::placeRequest($httpTransfer);
+
+        if (is_string($token)) {
+            $token = Validate::tokenValidate($token);
+
+            $httpTransfer->setPaymentHeaders($token);
+
+            $httpTransfer->build($request->fetchOrder($ngeniusReference));
+
+            return Validate::orderValidate(
+                NgeniusHTTPCommon::placeRequest($httpTransfer)
+            );
+        }
+
+        return false;
     }
 }
