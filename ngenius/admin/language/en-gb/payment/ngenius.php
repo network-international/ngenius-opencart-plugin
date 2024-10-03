@@ -1,7 +1,7 @@
 <?php
 
 // Heading
-$_['heading_title'] = 'N-Genius Payment Gateway - 1.0.3';
+$_['heading_title'] = 'N-Genius Payment Gateway - 1.1.0';
 
 // Text
 $_['text_extension'] = 'Extensions';
@@ -34,6 +34,7 @@ $_['payment_action']             = 'Payment Action';
 $_['outlet_ref']                 = 'Outlet Reference ID';
 $_['api_key']                    = 'API Key';
 $_['debug']                      = 'Debug Log';
+$_['debug_cron']                 = 'Debug Cron';
 $_['text_debug_yes']             = 'Yes';
 $_['text_debug_no']              = 'No';
 $_['text_title']                 = 'N-Genius Payment Gateway';

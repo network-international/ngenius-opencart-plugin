@@ -4,23 +4,72 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "af907b0b22b03ce44a19a2f1e6f020e2",
+    "content-hash": "2c21e3e13efc665f9db4cd85ec290335",
     "packages": [
         {
-            "name": "ngenius/ngenius-common",
-            "version": "v1.0.1",
+            "name": "megastruktur/phone-country-codes",
+            "version": "0.4",
             "source": {
                 "type": "git",
-                "url": "https://github.com/network-international/ngenius-common.git",
-                "reference": "5859001a942126b66b4c2778591a47fc392beace"
+                "url": "https://github.com/megastruktur/phone-country-codes.git",
+                "reference": "9d396143a73b08c0109053cf0c1cccdf8f78cfc1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/network-international/ngenius-common/zipball/5859001a942126b66b4c2778591a47fc392beace",
-                "reference": "5859001a942126b66b4c2778591a47fc392beace",
+                "url": "https://api.github.com/repos/megastruktur/phone-country-codes/zipball/9d396143a73b08c0109053cf0c1cccdf8f78cfc1",
+                "reference": "9d396143a73b08c0109053cf0c1cccdf8f78cfc1",
                 "shasum": ""
             },
             "require": {
+                "php": ">=5.3.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "4.0.*"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "megastruktur\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Peter Varaksin",
+                    "email": "astromortis@gmail.com"
+                }
+            ],
+            "description": "A simple library to get phone country codes.",
+            "homepage": "http://github.com/megastruktur/phone-country-codes",
+            "keywords": [
+                "country",
+                "phone"
+            ],
+            "support": {
+                "issues": "https://github.com/megastruktur/phone-country-codes/issues",
+                "source": "https://github.com/megastruktur/phone-country-codes/tree/master"
+            },
+            "time": "2017-10-14T23:18:01+00:00"
+        },
+        {
+            "name": "ngenius/ngenius-common",
+            "version": "v1.0.12",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/network-international/ngenius-common.git",
+                "reference": "fcf6b32e6e8946f86ca87d7955d3d4b56d8f372e"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/network-international/ngenius-common/zipball/fcf6b32e6e8946f86ca87d7955d3d4b56d8f372e",
+                "reference": "fcf6b32e6e8946f86ca87d7955d3d4b56d8f372e",
+                "shasum": ""
+            },
+            "require": {
+                "megastruktur/phone-country-codes": "0.4",
                 "php": "^8.0"
             },
             "type": "library",
@@ -43,9 +92,9 @@
             "homepage": "https://github.com/Ngenius/ngenius-common",
             "support": {
                 "issues": "https://github.com/network-international/ngenius-common/issues",
-                "source": "https://github.com/network-international/ngenius-common/tree/v1.0.1"
+                "source": "https://github.com/network-international/ngenius-common/tree/v1.0.12"
             },
-            "time": "2023-07-13T04:02:18+00:00"
+            "time": "2024-08-26T13:41:32+00:00"
         }
     ],
     "packages-dev": [],

@@ -6,11 +6,16 @@
 
 namespace Opencart\Admin\Controller\Extension\Ngenius\Payment;
 
+use Ngenius\NgeniusCommon\Formatter\ValueFormatter;
 use Ngenius\NgeniusCommon\NgeniusHTTPCommon;
 use Ngenius\NgeniusCommon\NgeniusHTTPTransfer;
+use Ngenius\NgeniusCommon\Processor\ApiProcessor;
+use Ngenius\NgeniusCommon\Processor\RefundProcessor;
+use NumberFormatter;
 use Opencart\System\Engine\Controller;
 use Opencart\System\Library\Tools\Request;
 use Opencart\System\Library\Tools\Validate;
+use Opencart\Catalog\Model\Extension\Ngenius\Payment\Ngenius as NgeniusOrder;
 
 require_once DIR_EXTENSION . 'ngenius/system/library/vendor/autoload.php';
 require_once DIR_EXTENSION . 'ngenius/system/library/ngenius.php';
@@ -24,9 +29,9 @@ class Ngenius extends Controller
      * @var array
      */
     private array $error = array();
-    public const EXTENSION_DIR = "extension/ngenius/payment/ngenius";
-    public const USER_TOKEN = "user_token=";
-    public const PAYMENT_TYPE = "&type=payment";
+    public const EXTENSION_DIR  = "extension/ngenius/payment/ngenius";
+    public const USER_TOKEN     = "user_token=";
+    public const PAYMENT_TYPE   = "&type=payment";
     public const AMOUNT_LITERAL = "An amount ";
 
     /**
@@ -93,6 +98,11 @@ class Ngenius extends Controller
             self::USER_TOKEN . $this->session->data['user_token'] . self::PAYMENT_TYPE,
             true
         );
+
+        $parsedUrl = parse_url(HTTP_SERVER);
+
+        $data['cron_url'] = $parsedUrl['scheme'] . '://' . $parsedUrl['host']
+                            . '/index.php?route=extension/ngenius/payment/ngenius|cronTask';
 
         if (isset($this->request->post['payment_ngenius_title'])) {
             $data['payment_ngenius_title'] = $this->request->post['payment_ngenius_title'];
@@ -180,6 +190,12 @@ class Ngenius extends Controller
             $data['payment_ngenius_debug'] = $this->config->get('payment_ngenius_debug');
         }
 
+        if (isset($this->request->post['payment_ngenius_debug_cron'])) {
+            $data['payment_ngenius_debug_cron'] = $this->request->post['payment_ngenius_debug_cron'];
+        } else {
+            $data['payment_ngenius_debug_cron'] = $this->config->get('payment_ngenius_debug_cron');
+        }
+
         if (isset($this->request->post['payment_ngenius_sort_order'])) {
             $data['payment_ngenius_sort_order'] = $this->request->post['payment_ngenius_sort_order'];
         } else {
@@ -255,33 +271,67 @@ class Ngenius extends Controller
             $this->request->get['order_id']
         );
 
-        foreach ($customerTransaction as $key => $transaction) {
-            if ($data['action'] === 'PURCHASE' && $data['state'] === 'PURCHASED') {
-                $transaction['refund_button'] = true;
+        ValueFormatter::formatCurrencyDecimals($data['currency'], $data['amount']);
+
+        ValueFormatter::formatCurrencyDecimals($data['currency'], $data['captured_amt']);
+
+        if ($data['action'] === 'SALE' && $data['state'] === 'PURCHASED') {
+            $getNgeniusOrder = $this->model_extension_ngenius_payment_ngenius->getNGeniusOrder($data['reference']);
+            $apiProcessor    = new ApiProcessor($getNgeniusOrder);
+            $captureId       = $apiProcessor->getTransactionId();
+            if (!empty($captureId)) {
+                $dataArray = [
+                    'captured_amt' => $data['captured_amt'],
+                    'state'        => $apiProcessor->getState(),
+                    'status'       => $data['status'],
+                ];
+                $this->model_extension_ngenius_payment_ngenius->updateTable($dataArray, (int)$data['order_id']);
+
+                $comment = json_encode(array('captureId' => $captureId));
+
+                $this->model_extension_ngenius_payment_ngenius->addTransaction(
+                    $customerTransaction[0]['customer_id'],
+                    $comment,
+                    (float)$dataArray['captured_amt'],
+                    $customerTransaction[0]['order_id']
+                );
+
+                $customerTransaction = $this->model_extension_ngenius_payment_ngenius->getCustomerTransaction(
+                    $this->request->get['order_id']
+                );
             }
+        }
+
+        foreach ($customerTransaction as $key => $transaction) {
             $jsonData = json_decode($transaction['description'], true);
             if ($jsonData) {
                 foreach ($jsonData as $key => $value) {
-                    $transaction['amount'] = $data['currency'] . number_format($transaction['amount'], 2);
+                    ValueFormatter::formatCurrencyDecimals($data['currency'], $transaction['amount']);
+
+                    $transaction['amount'] = $data['currency'] . $transaction['amount'];
                     $transaction['id']     = $value;
                     switch ($key) {
                         case 'captureId':
-                            if ($data['captured_amt'] > 0 && !in_array(
-                                $data['status'],
-                                array(
-                                    $ngenius::NG_AUTHORISED,
-                                    $ngenius::NG_AUTH_REV
-                                    )
-                            )) {
+                            $transaction['message'] = 'Transaction: Captured';
+                            if (
+                                $data['state'] === 'CAPTURED'
+                                || $data["state"] === 'PARTIALLY_REFUNDED'
+                                || $data["state"] === 'PURCHASED'
+                            ) {
                                 $transaction['refund_button'] = true;
                             }
-                            $transaction['message'] = 'Transaction: Captured';
                             break;
                         case 'refundedId':
                             $transaction['message'] = 'Transaction: Refunded';
                             break;
                         case 'AuthId':
                             $transaction['message'] = 'Transaction: Authorised';
+                            if (($data["state"] === 'PARTIALLY_REFUNDED'
+                                 || $data["state"] === 'PURCHASED') && $data["action"] !== 'SALE'
+                                 && $data["action"] !== 'AUTH'
+                            ) {
+                                $transaction['refund_button'] = true;
+                            }
                             break;
                         case 'voidId':
                             $transaction['message'] = 'Transaction: Auth Reversed';
@@ -294,18 +344,10 @@ class Ngenius extends Controller
             }
         }
 
-        if (($data['action'] === 'PURCHASE'
-                && ($data['state'] === 'PURCHASED' || $data["state"] === "PARTIALLY_REFUNDED"))
-            || ($data['action'] === 'SALE'
-                && ($data['state'] === 'CAPTURED' || $data["state"] === "PARTIALLY_REFUNDED"))
-        ) {
-            $data["transactions"][sizeof($customerTransaction)-1]['refund_button'] = true;
-        }
-
-        $data['max_refund_amount']  = number_format($data['captured_amt'], 2);
-        $data['max_capture_amount'] = number_format($data['amount'], 2);
-        $data['amount']             = $data['currency'] . number_format($data['amount'], 2);
-        $data['captured_amt']       = $data['currency'] . number_format($data['captured_amt'], 2);
+        $data['max_refund_amount']  = $data['captured_amt'];
+        $data['max_capture_amount'] = $data['amount'];
+        $data['amount']             = $data['currency'] . $data['amount'];
+        $data['captured_amt']       = $data['currency'] . $data['captured_amt'];
         $data['is_authorised']      = $ngenius::NG_AUTHORISED === $data['status'];
         $data['user_token']         = $this->session->data['user_token'];
         $this->response->setOutput($this->load->view('extension/ngenius/payment/ngenius_order_ajax', $data));
@@ -321,11 +363,11 @@ class Ngenius extends Controller
         $this->load->model('sale/order');
 
         $ngenius = new \Opencart\System\Library\Ngenius($this->registry);
-        $json = [];
+        $json    = [];
 
-        $request  = new Request($ngenius);
+        $request = new Request($ngenius);
 
-        $httpTransfer = new NgeniusHTTPTransfer();
+        $httpTransfer = new NgeniusHTTPTransfer("");
 
         $httpTransfer->setHttpVersion($ngenius->getHttpVersion());
         $httpTransfer->setTokenHeaders($ngenius->getApiKey());
@@ -338,231 +380,47 @@ class Ngenius extends Controller
         if (is_string($token)) {
             $token = Validate::tokenValidate($token);
         } else {
-            $json['error'] = $token['error'];
+            $json['error'] = 'Could not retrieve token.';
         }
-        $data_table = [];
         $data       = $this->model_extension_ngenius_payment_ngenius->getOrder($this->request->post['order_id']);
         $order      = $this->model_sale_order->getOrder($this->request->post['order_id']);
 
-        if (!empty($token) && is_string($token)) {
+        ValueFormatter::formatCurrencyDecimals($order['currency_code'], $order['total']);
 
+        $amount = null;
+
+        if (isset($this->request->post['amount'])) {
+            $amount =  (float)$this->request->post['amount'];
+		}
+
+        if (!empty($token) && is_string($token)) {
             $httpTransfer->setPaymentHeaders($token);
             if ($this->request->post['type'] == 'void') {
-
-                $voidRequestData = $request->voidOrder($data['reference'], $data['payment_id']);
-                $httpTransfer->build($voidRequestData);
-
-                $orderInfo = Validate::voidValidate(
-                    NgeniusHTTPCommon::placeRequest($httpTransfer)
-                );
-
-                if (is_array($orderInfo)) {
-                    if ('REVERSED' === $orderInfo['state']) {
-                        $data_table['state']  = $orderInfo['state'];
-                        $data_table['status'] = $ngenius::NG_AUTH_REV;
-
-                        $this->model_extension_ngenius_payment_ngenius->updateTable($data_table, $order['order_id']);
-                        $captureIdArr['voidId'] = 'NA';
-                        $this->model_extension_ngenius_payment_ngenius->addTransaction(
-                            $order['customer_id'],
-                            json_encode($captureIdArr),
-                            '',
-                            $order['order_id']
-                        );
-
-                        //Add to history table
-                        $order_status_id = $this->model_extension_ngenius_payment_ngenius->getNgeniusStatusId(
-                            $data_table['status']
-                        );
-                        $json['success'] = 'The void transaction processed successfully.';
-                        $this->model_extension_ngenius_payment_ngenius->addOrderHistory(
-                            $order['order_id'],
-                            $order_status_id,
-                            $json['success'],
-                            false
-                        );
-                    }
-                } else {
-                    $json['error'] = $orderInfo;
-                }
-            } elseif ($this->request->post['type'] == 'capture' && $this->request->post['amount']) {
-
-                $captureRequestData = $request->captureOrder($data, $this->request->post['amount']);
-                $httpTransfer->build($captureRequestData);
-
-                $orderInfo = Validate::captureValidate(
-                    NgeniusHTTPCommon::placeRequest($httpTransfer)
-                );
-
-                if (is_array($orderInfo)) {
-                    $data_table['state'] = $orderInfo['state'];
-                    if ('PARTIALLY_CAPTURED' === $orderInfo['state']) {
-                        $data_table['status'] = $ngenius::NG_P_CAPTURED;
-                    } else {
-                        $data_table['status'] = $ngenius::NG_F_CAPTURED;
-                    }
-                    $data_table['captured_amt'] = $orderInfo['total_captured'];
-                    $this->model_extension_ngenius_payment_ngenius->updateTable($data_table, $order['order_id']);
-
-                    $captureIdArr['captureId'] = $orderInfo['transaction_id'];
-                    $this->model_extension_ngenius_payment_ngenius->addTransaction(
-                        $order['customer_id'],
-                        json_encode($captureIdArr),
-                        $orderInfo['captured_amt'],
-                        $order['order_id']
-                    );
-                    $json['success'] = self::AMOUNT_LITERAL . $order['currency_code'] . number_format(
-                        $orderInfo['captured_amt'],
-                        2
-                    ) . ' captured successfully.';
-
-                    //Add to history table
-                    $order_status_id = $this->model_extension_ngenius_payment_ngenius->getNgeniusStatusId(
-                        $data_table['status']
-                    );
-                    $this->model_extension_ngenius_payment_ngenius->addOrderHistory(
-                        $order['order_id'],
-                        $order_status_id,
-                        $json['success'],
-                        false
-                    );
-                } else {
-                    $json['error'] = $orderInfo;
-                }
-            } elseif ($data['action'] === 'SALE' && $this->request->post['type'] == 'refund'
-                && $this->request->post['amount'] && $this->request->post['capture_id']) {
-
-                $refundRequestData = $request->refundOrder(
-                    $data,
-                    $this->request->post['amount'],
-                    $this->request->post['capture_id']
-                );
-                $httpTransfer->build($refundRequestData);
-
-                $orderInfo = Validate::refundValidate(
-                    NgeniusHTTPCommon::placeRequest($httpTransfer)
-                );
-
-                if (is_array($orderInfo)) {
-                    $data_table['state'] = $orderInfo['state'];
-                    if ($orderInfo['total_refunded'] === $orderInfo['captured_amt']) {
-                        $data_table['status'] = $ngenius::NG_F_REFUNDED;
-
-                        //Reverse quantity
-                        $order_products = $this->model_sale_order->getProducts($order['order_id']);
-                        $this->model_extension_ngenius_payment_ngenius->updateProduct($order_products);
-                    } else {
-                        $data_table['status'] = $ngenius::NG_P_REFUNDED;
-                    }
-
-                    $data_table['captured_amt'] = $orderInfo['captured_amt'] - $orderInfo['total_refunded'];
-                    $this->model_extension_ngenius_payment_ngenius->updateTable($data_table, $order['order_id']);
-
-                    $captureIdArr['refundedId'] = $orderInfo['transaction_id'];
-                    $this->model_extension_ngenius_payment_ngenius->addTransaction(
-                        $order['customer_id'],
-                        json_encode($captureIdArr),
-                        $this->request->post['amount'],
-                        $order['order_id']
-                    );
-                    $json['success'] = self::AMOUNT_LITERAL . $order['currency_code'] . number_format(
-                        $orderInfo['refunded_amt'],
-                        2
-                    ) . ' refunded successfully.';
-
-                    //Add to history table
-                    $order_status_id = $this->model_extension_ngenius_payment_ngenius->getNgeniusStatusId(
-                        $data_table['status']
-                    );
-                    $this->model_extension_ngenius_payment_ngenius->addOrderHistory(
-                        $order['order_id'],
-                        $order_status_id,
-                        $json['success'],
-                        false
-                    );
-                } else {
-                    $json['error'] = $orderInfo;
-                }
+                $json = $this->voidOrder($request, $httpTransfer, $data, $order, $ngenius);
+            } elseif ($this->request->post['type'] == 'capture' && $amount) {
+                $json = $this->captureOrder($request, $httpTransfer, $data, $amount, $order, $ngenius);
+            } elseif (($data['action'] === 'SALE' || $data['action'] === 'AUTH') && $this->request->post['type'] == 'refund'
+                      && $amount && $this->request->post['capture_id']) {
+                $json = $this->saleRefund($request, $httpTransfer, $data, $amount, $order, $ngenius);
             } elseif ($data['action'] === 'PURCHASE' && $this->request->post['type'] == 'refund'
-                && $this->request->post['amount'] && $this->request->post['capture_id']) {
-                // Get the ngenius order detail
-
-                $orderRequestData = $request->orderStatus($data);
-                $httpTransfer->build($orderRequestData);
-
-                $orderStatus = NgeniusHTTPCommon::placeRequest($httpTransfer);
-
-                $orderStatus = json_decode($orderStatus, true);
-                if ($orderStatus['_embedded']['payment'][0]["paymentMethod"]["name"] === "CHINA_UNION_PAY") {
-                    $json['error'] = "This order is non-refundable";
-                } elseif (isset($orderStatus['_embedded']['payment'][0]['_links']['cnp:refund'])) {
-                    $refundLink = $orderStatus['_embedded']['payment'][0]['_links']['cnp:refund']['href'];
-                    // If we have a refund link then the amount has been captured and can be refunded as normal
-                    $data['uri'] = $refundLink;
-
-                    $refundRequestData = $request->refundPurchase($data, $this->request->post['amount']);
-                    $httpTransfer->build($refundRequestData);
-
-                    $orderInfo = Validate::refundValidate(
-                        NgeniusHTTPCommon::placeRequest($httpTransfer)
-                    );
-                } else {
-
-                    $refundRequestData = $request->voidPurchase(
-                        $data,
-                        $this->request->post['amount'],
-                        $this->request->post['capture_id']
-                    );
-                    $httpTransfer->build($refundRequestData);
-
-                    $orderInfo = Validate::refundValidate(
-                        NgeniusHTTPCommon::placeRequest($httpTransfer)
-                    );
-                }
-                if (is_array($orderInfo)) {
-                    $data_table['state'] = $orderInfo['state'];
-                    if ($orderInfo['total_refunded'] === $orderInfo['captured_amt']) {
-                        $data_table['status'] = $ngenius::NG_F_REFUNDED;
-
-                        //Reverse quantity
-                        $order_products = $this->model_sale_order->getProducts($order['order_id']);
-                        $this->model_extension_ngenius_payment_ngenius->updateProduct($order_products);
-                    } else {
-                        $data_table['status'] = $ngenius::NG_P_REFUNDED;
-                    }
-
-                    $data_table['captured_amt'] = $orderInfo['captured_amt'] - $orderInfo['total_refunded'];
-                    $this->model_extension_ngenius_payment_ngenius->updateTable($data_table, $order['order_id']);
-
-                    $captureIdArr['refundedId'] = $orderInfo['transaction_id'];
-                    $this->model_extension_ngenius_payment_ngenius->addTransaction(
-                        $order['customer_id'],
-                        json_encode($captureIdArr),
-                        $orderInfo['refunded_amt'],
-                        $order['order_id']
-                    );
-                    $json['success'] = self::AMOUNT_LITERAL . $order['currency_code'] . number_format(
-                        $orderInfo['refunded_amt'],
-                        2
-                    ) . ' refunded successfully.';
-
-                    //Add to history table
-                    $order_status_id = $this->model_extension_ngenius_payment_ngenius->getNgeniusStatusId(
-                        $data_table['status']
-                    );
-                    $this->model_extension_ngenius_payment_ngenius->addOrderHistory(
-                        $order['order_id'],
-                        $order_status_id,
-                        $json['success'],
-                        false
-                    );
-                } else {
-                    $json['error'] = $orderInfo;
-                }
+                      && $amount && $this->request->post['capture_id']) {
+                $json = $this->purchaseRefund($request, $httpTransfer, $data, $amount, $order, $ngenius);
+            } else {
+                $json['error'] = "Your action could not be performed";
             }
         }
         $this->response->addHeader('Content-Type: application/json');
         $this->response->setOutput(json_encode($json));
+    }
+
+    protected function getOrderStatus($data, $httpTransfer, $request): \stdClass
+    {
+        $orderRequestData = $request->orderStatus($data);
+        $httpTransfer->build($orderRequestData);
+
+        $orderStatus = NgeniusHTTPCommon::placeRequest($httpTransfer);
+
+        return json_decode($orderStatus);
     }
 
     /**
@@ -578,4 +436,283 @@ class Ngenius extends Controller
         return !$this->error;
     }
 
+    /**
+     * @param $request
+     * @param $httpTransfer
+     * @param $data
+     * @param $order
+     * @param $ngenius
+     *
+     * @return array
+     */
+    protected function voidOrder($request, $httpTransfer, $data, $order, $ngenius): array
+    {
+        $voidRequestData = $request->voidOrder($data['reference'], $data['payment_id']);
+        $httpTransfer->build($voidRequestData);
+
+        $orderInfo = Validate::voidValidate(
+            NgeniusHTTPCommon::placeRequest($httpTransfer)
+        );
+
+        if (is_array($orderInfo)) {
+            if ('REVERSED' === $orderInfo['state']) {
+                $data_table['state']  = $orderInfo['state'];
+                $data_table['status'] = $ngenius::NG_AUTH_REV;
+
+                $this->model_extension_ngenius_payment_ngenius->updateTable($data_table, $order['order_id']);
+                $captureIdArr['voidId'] = 'NA';
+                $this->model_extension_ngenius_payment_ngenius->addTransaction(
+                    $order['customer_id'],
+                    json_encode($captureIdArr),
+                    '',
+                    $order['order_id']
+                );
+
+                //Add to history table
+                $order_status_id = $this->model_extension_ngenius_payment_ngenius->getNgeniusStatusId(
+                    $data_table['status']
+                );
+                $json['success'] = 'The void transaction processed successfully.';
+                $this->model_extension_ngenius_payment_ngenius->addOrderHistory(
+                    $order['order_id'],
+                    $order_status_id,
+                    $json['success'],
+                    false
+                );
+            }
+        } else {
+            $json['error'] = $orderInfo;
+        }
+
+        return $json;
+    }
+
+    /**
+     * @param $request
+     * @param $httpTransfer
+     * @param $data
+     * @param $amount
+     * @param $order
+     * @param $ngenius
+     *
+     * @return array
+     */
+    protected function captureOrder($request, $httpTransfer, $data, $amount, $order, $ngenius): array
+    {
+        $captureRequestData = $request->captureOrder($data, $amount);
+        $httpTransfer->build($captureRequestData);
+
+        $orderInfo = Validate::captureValidate(
+            NgeniusHTTPCommon::placeRequest($httpTransfer)
+        );
+
+        if (is_array($orderInfo)) {
+            $data_table['state'] = $orderInfo['state'];
+            if ('PARTIALLY_CAPTURED' === $orderInfo['state']) {
+                $data_table['status'] = $ngenius::NG_P_CAPTURED;
+            } else {
+                $data_table['status'] = $ngenius::NG_F_CAPTURED;
+            }
+            $data_table['captured_amt'] = $orderInfo['total_captured'];
+            $this->model_extension_ngenius_payment_ngenius->updateTable($data_table, $order['order_id']);
+
+            $this->model_extension_ngenius_payment_ngenius->addTransaction(
+                $order['customer_id'],
+                "Order ID: #" . $order['order_id'] . " pre-capture",
+                (float)($order['total']) * -1,
+                $order['order_id']
+            );
+
+            $captureIdArr['captureId'] = $orderInfo['transaction_id'];
+            $this->model_extension_ngenius_payment_ngenius->addTransaction(
+                $order['customer_id'],
+                json_encode($captureIdArr),
+                (float)$order['total'],
+                $order['order_id']
+            );
+            $json['success'] = self::AMOUNT_LITERAL . $order['currency_code']
+                               . $orderInfo['captured_amt'] . ' captured successfully.';
+
+            //Add to history table
+            $order_status_id = $this->model_extension_ngenius_payment_ngenius->getNgeniusStatusId(
+                $data_table['status']
+            );
+            $this->model_extension_ngenius_payment_ngenius->addOrderHistory(
+                $order['order_id'],
+                $order_status_id,
+                $json['success'],
+                false
+            );
+        } else {
+            $json['error'] = $orderInfo;
+        }
+
+        return $json;
+    }
+
+    /**
+     * @param $request
+     * @param $httpTransfer
+     * @param $data
+     * @param $amount
+     * @param $order
+     * @param $ngenius
+     *
+     * @return array
+     */
+    protected function saleRefund($request, $httpTransfer, $data, $amount, $order, $ngenius): array
+    {
+        $orderStatus = $this->getOrderStatus($data, $httpTransfer, $request);
+
+        $payment = $orderStatus->_embedded->payment[0];
+
+        $refundUrl = RefundProcessor::extractUrl($payment);
+
+        $refundRequestData = $request->refundOrder(
+            $data,
+            $amount,
+            $this->request->post['capture_id'],
+            $refundUrl
+        );
+
+        $httpTransfer->build($refundRequestData);
+
+        $orderInfo = Validate::refundValidate(
+            NgeniusHTTPCommon::placeRequest($httpTransfer)
+        );
+
+        if (is_array($orderInfo)) {
+            $data_table['state'] = $orderInfo['state'];
+            if ($orderInfo['total_refunded'] === $orderInfo['captured_amt']) {
+                if ($orderInfo['state'] === 'PARTIALLY_REFUNDED') {
+                    $data_table['state'] = 'REFUNDED';
+                }
+
+                $data_table['status'] = $ngenius::NG_F_REFUNDED;
+
+                //Reverse quantity
+                $order_products = $this->model_sale_order->getProducts($order['order_id']);
+                $this->model_extension_ngenius_payment_ngenius->updateProduct($order_products);
+            } else {
+                $data_table['status'] = $ngenius::NG_P_REFUNDED;
+            }
+
+            $data_table['captured_amt'] = $orderInfo['captured_amt'] - $orderInfo['total_refunded'];
+            $this->model_extension_ngenius_payment_ngenius->updateTable($data_table, $order['order_id']);
+
+            $captureIdArr['refundedId'] = $orderInfo['transaction_id'];
+            ValueFormatter::formatCurrencyDecimals($order['currency_code'], $orderInfo['refunded_amt']);
+
+            $this->model_extension_ngenius_payment_ngenius->addTransaction(
+                $order['customer_id'],
+                json_encode($captureIdArr),
+                $orderInfo['refunded_amt'],
+                $order['order_id']
+            );
+
+            $json['success'] = self::AMOUNT_LITERAL . $order['currency_code'] . $orderInfo['refunded_amt'] . ' refunded successfully.';
+
+            //Add to history table
+            $order_status_id = $this->model_extension_ngenius_payment_ngenius->getNgeniusStatusId(
+                $data_table['status']
+            );
+            $this->model_extension_ngenius_payment_ngenius->addOrderHistory(
+                $order['order_id'],
+                $order_status_id,
+                $json['success'],
+                false
+            );
+        } else {
+            $json['error'] = $orderInfo;
+        }
+
+        return $json;
+    }
+
+    /**
+     * @param $request
+     * @param $httpTransfer
+     * @param $data
+     * @param $amount
+     * @param $order
+     * @param $ngenius
+     *
+     * @return array
+     */
+    protected function purchaseRefund($request, $httpTransfer, $data, $amount, $order, $ngenius): array
+    {
+        // Get the ngenius order detail
+        $orderRequestData = $request->orderStatus($data);
+        $httpTransfer->build($orderRequestData);
+
+        $orderStatus = NgeniusHTTPCommon::placeRequest($httpTransfer);
+
+        $orderStatus = json_decode($orderStatus);
+
+        $payment = $orderStatus->_embedded->payment[0];
+
+        $refundLink = RefundProcessor::extractUrl($payment);
+
+        if (!str_contains($refundLink, 'cancel')) {
+            $data['uri']       = $refundLink;
+            $refundRequestData = $request->refundPurchase($data, $amount);
+        } else {
+            $refundRequestData = $request->voidPurchase(
+                $data,
+                $amount,
+                $this->request->post['capture_id']
+            );
+        }
+
+        $httpTransfer->build($refundRequestData);
+
+        $orderInfo = Validate::refundValidate(
+            NgeniusHTTPCommon::placeRequest($httpTransfer)
+        );
+
+        if (is_array($orderInfo)) {
+            $data_table['state'] = $orderInfo['state'];
+            if ($orderInfo['total_refunded'] === $orderInfo['captured_amt']) {
+                if ($orderInfo['state'] === 'PARTIALLY_REFUNDED') {
+                    $data_table['state'] = 'REFUNDED';
+                }
+
+                $data_table['status'] = $ngenius::NG_F_REFUNDED;
+
+                //Reverse quantity
+                $order_products = $this->model_sale_order->getProducts($order['order_id']);
+                $this->model_extension_ngenius_payment_ngenius->updateProduct($order_products);
+            } else {
+                $data_table['status'] = $ngenius::NG_P_REFUNDED;
+            }
+
+            $data_table['captured_amt'] = $orderInfo['captured_amt'] - $orderInfo['total_refunded'];
+            $this->model_extension_ngenius_payment_ngenius->updateTable($data_table, $order['order_id']);
+
+            $captureIdArr['refundedId'] = $orderInfo['transaction_id'];
+            $this->model_extension_ngenius_payment_ngenius->addTransaction(
+                $order['customer_id'],
+                json_encode($captureIdArr),
+                $orderInfo['refunded_amt'],
+                $order['order_id']
+            );
+            ValueFormatter::formatCurrencyDecimals($order['currency_code'], $orderInfo['refunded_amt']);
+            $json['success'] = self::AMOUNT_LITERAL . $order['currency_code'] . $orderInfo['refunded_amt'] . ' refunded successfully.';
+
+            //Add to history table
+            $order_status_id = $this->model_extension_ngenius_payment_ngenius->getNgeniusStatusId(
+                $data_table['status']
+            );
+            $this->model_extension_ngenius_payment_ngenius->addOrderHistory(
+                $order['order_id'],
+                $order_status_id,
+                $json['success'],
+                false
+            );
+        } else {
+            $json['error'] = $orderInfo;
+        }
+
+        return $json;
+    }
 }

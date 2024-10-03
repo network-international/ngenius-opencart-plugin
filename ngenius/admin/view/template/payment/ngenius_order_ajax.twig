@@ -57,7 +57,8 @@
                             <strong>{{ currency }}{{ max_capture_amount }}</strong>
                             <input id="capture-amount" type="hidden" name="capture_amount"
                                    value="{{ max_capture_amount }}"/>
-                            &nbsp;<button class="btn btn-primary button-command" data-type="capture">{{ button_capture }}</button>
+                            &nbsp;<button class="btn btn-primary button-command"
+                                          data-type="capture">{{ button_capture }}</button>
                         </td>
                     {% endif %}
                 </tr>
@@ -90,7 +91,7 @@
                                 <input id="{{ transaction.capture_id }}" size="8" text="text" name="refund_amount"
                                        value="{{ max_refund_amount }}"/>
                                 <button class="btn btn-primary button-command" data-type="refund"
-                                   data-capture="{{ transaction.id }}">{{ button_refund }}</button>
+                                        data-capture="{{ transaction.id }}">{{ button_refund }}</button>
                             {% else %}
                                 {{ transaction.message }}
                             {% endif %}
@@ -124,7 +125,7 @@
     }
 
     if (confirm(confirm_text)) {
-        const buttonHTML = clicked_button.html();
+      const buttonHTML = clicked_button.html()
       $.ajax({
         url: 'index.php?route=extension/ngenius/payment/ngenius|transactionCommand&user_token={{ user_token }}',
         type: 'post',
@@ -137,16 +138,16 @@
         dataType: 'json',
         beforeSend: function () {
 
-            clicked_button.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
-            $('.alert').hide().removeClass('alert-success alert-danger')
+          clicked_button.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>')
+          $('.alert').hide().removeClass('alert-success alert-danger')
         },
         complete: function () {
-            clicked_button.html(buttonHTML);
+          clicked_button.html(buttonHTML)
         },
         success: function (json) {
-          const notification = $('#notification');
-          notification.removeClass('alert alert-danger alert-success');
-          console.log(json);
+          const notification = $('#notification')
+          notification.removeClass('alert alert-danger alert-success')
+          console.log(json)
           if (json.error) {
             notification.show().addClass('alert alert-danger').html('<i class="fa fa-check-circle"></i> ' + json.error)
           }

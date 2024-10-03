@@ -46,8 +46,6 @@ class Ngenius
 
     /**
      * constructor
-     *
-     * @param type $registry
      */
     public function __construct($registry)
     {
@@ -62,7 +60,7 @@ class Ngenius
      */
     public function isComplete()
     {
-        return  ! empty($this->getApiKey()) && ! empty($this->getOutletReferenceId());
+        return !empty($this->getApiKey()) && !empty($this->getOutletReferenceId());
     }
 
     /**
@@ -118,11 +116,10 @@ class Ngenius
     public function getOutletReferenceId()
     {
         $outletReferenceId = $this->config->get('payment_ngenius_outlet_ref');
-
-        $currency = $this->session->data['currency'];
-        $extraCurrencies = $this->config->get('payment_ngenius_extra_currency');
+        $currency          = $this->session->data['currency'] ?? '';
+        $extraCurrencies   = $this->config->get('payment_ngenius_extra_currency');
         if (!empty($extraCurrencies) && (($key = array_search($currency, $extraCurrencies)) !== false)) {
-            $extraOutlets = $this->config->get('payment_ngenius_extra_outlet');
+            $extraOutlets      = $this->config->get('payment_ngenius_extra_outlet');
             $outletReferenceId = $extraOutlets[$key];
         }
 
@@ -289,7 +286,8 @@ class Ngenius
      */
     public function ngeniusOrderStatus()
     {
-        $lang       = (int)$this->config->get('config_language_id');
+        $lang = (int)$this->config->get('config_language_id');
+
         return array(
             [$lang => ['name' => self::NG_PENDING]],
             [$lang => ['name' => self::NG_PROCESSING]],
