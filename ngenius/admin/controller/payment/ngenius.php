@@ -328,7 +328,7 @@ class Ngenius extends Controller
                             $transaction['message'] = 'Transaction: Authorised';
                             if (($data["state"] === 'PARTIALLY_REFUNDED'
                                  || $data["state"] === 'PURCHASED') && $data["action"] !== 'SALE'
-                                 && $data["action"] !== 'AUTH'
+                                && $data["action"] !== 'AUTH'
                             ) {
                                 $transaction['refund_button'] = true;
                             }
@@ -382,16 +382,14 @@ class Ngenius extends Controller
         } else {
             $json['error'] = 'Could not retrieve token.';
         }
-        $data       = $this->model_extension_ngenius_payment_ngenius->getOrder($this->request->post['order_id']);
-        $order      = $this->model_sale_order->getOrder($this->request->post['order_id']);
-
-        ValueFormatter::formatCurrencyDecimals($order['currency_code'], $order['total']);
+        $data  = $this->model_extension_ngenius_payment_ngenius->getOrder($this->request->post['order_id']);
+        $order = $this->model_sale_order->getOrder($this->request->post['order_id']);
 
         $amount = null;
 
         if (isset($this->request->post['amount'])) {
-            $amount =  (float)$this->request->post['amount'];
-		}
+            $amount = (float)str_replace(',', '', $this->request->post['amount']);
+        }
 
         if (!empty($token) && is_string($token)) {
             $httpTransfer->setPaymentHeaders($token);
@@ -530,8 +528,13 @@ class Ngenius extends Controller
                 (float)$order['total'],
                 $order['order_id']
             );
+
+            $total = $orderInfo['captured_amt'];
+
+            ValueFormatter::formatCurrencyDecimals($order['currency_code'] , $total);
+
             $json['success'] = self::AMOUNT_LITERAL . $order['currency_code']
-                               . $orderInfo['captured_amt'] . ' captured successfully.';
+                               . $total . ' captured successfully.';
 
             //Add to history table
             $order_status_id = $this->model_extension_ngenius_payment_ngenius->getNgeniusStatusId(

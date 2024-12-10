@@ -139,7 +139,10 @@ class Validate
         if (isset($last_transaction['state']) && ('SUCCESS' === $last_transaction['state'])
             && isset($last_transaction['amount']['value'])
         ) {
-            $captured_amt = ValueFormatter::intToFloatRepresentation($currencyCode, $last_transaction['amount']['value']);
+            $captured_amt = ValueFormatter::intToFloatRepresentation(
+                $currencyCode,
+                $last_transaction['amount']['value']
+            );
         }
 
         $transaction_id = '';
@@ -206,8 +209,11 @@ class Validate
                                                   && $transaction_arr['state'] == 'REQUESTED'))
             && isset($transaction_arr['amount']['value'])
         ) {
-            $last_refunded_amt = ValueFormatter::intToFloatRepresentation($currencyCode, $transaction_arr['amount']['value']);
-		} else {
+            $last_refunded_amt = ValueFormatter::intToFloatRepresentation(
+                $currencyCode,
+                $transaction_arr['amount']['value']
+            );
+        } else {
             $last_refunded_amt = $refunded_amt;
         }
 

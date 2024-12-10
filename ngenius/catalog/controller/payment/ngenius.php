@@ -91,8 +91,6 @@ class Ngenius extends Controller
             }
             $order = $this->model_checkout_order->getOrder($this->session->data['order_id']);
 
-            ValueFormatter::formatCurrencyDecimals($order['currency_code'], $order['total']);
-
             if ($token && is_string($token) && $order) {
                 $paymentAction = $ngenius->getPaymentAction();
 
