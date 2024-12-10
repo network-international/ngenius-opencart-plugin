@@ -29,6 +29,7 @@ class Ngenius extends Model
     public const LINKS_LITERAL      = "_links";
     public const EMBEDDED_LITERAL   = "_embedded";
     public const UPDATE_LITERAL     = "UPDATE ";
+    public const SELECT_LITERAL     = "SELECT ";
     /**
      * @var mixed|string
      */
@@ -135,6 +136,10 @@ class Ngenius extends Model
      */
     public function updateTable(array $data, int $nid)
     {
+        if ($nid == 0) {
+            throw new \Exception('Invalid nid provided: ' . $nid);
+        }
+
         return $this->db->query(
             self::UPDATE_LITERAL . DB_PREFIX
             . "ngenius_networkinternational SET state = '{$data['state']}',
@@ -218,7 +223,11 @@ class Ngenius extends Model
             $this->orderStatus = $this->ngenius::NG_AUTHORISED;
             $this->load->model(self::CHECKOUT_LITERAL);
 
-            $message   = 'An amount: ' . $order['currency_code'] . $order['total'] . ' has been authorised.';
+            $total = $order['total'];
+
+            ValueFormatter::formatCurrencyDecimals($order['currency_code'] , $total);
+
+            $message   = 'An amount: ' . $order['currency_code'] . $total . ' has been authorised.';
             $status_id = $this->ngenius->getOrderStatusId($this, $this->ngenius::NG_AUTHORISED);
 
             $this->model_checkout_order->addHistory($order['order_id'], $status_id, $message, true);
@@ -237,16 +246,21 @@ class Ngenius extends Model
      */
     public function orderSale(array $order, ApiProcessor $apiProcessor): array|string|null
     {
-	    $payment_result = $apiProcessor->getPaymentResult();
+        $payment_result = $apiProcessor->getPaymentResult();
 
         if (self::NGENIUS_CAPTURED === $this->ngeniusState) {
             $this->orderStatus = $this->ngenius::NG_COMPLETE;
             $this->load->model(self::CHECKOUT_LITERAL);
             $transaction_id = '';
             if (isset($payment_result[self::EMBEDDED_LITERAL][self::CAPTURE_LITERAL][0])) {
-	            $transaction_id = $apiProcessor->getTransactionId();
+                $transaction_id = $apiProcessor->getTransactionId();
             }
-            $message   = 'Captured Amount: ' . $order['currency_code'] . $order['total'] . ' | Transaction ID: ' . $transaction_id;
+
+            $total = $order['total'];
+
+            ValueFormatter::formatCurrencyDecimals($order['currency_code'] , $total);
+
+            $message   = 'Captured Amount: ' . $order['currency_code'] . $total . ' | Transaction ID: ' . $transaction_id;
             $status_id = $this->ngenius->getOrderStatusId($this, $this->ngenius::NG_COMPLETE);
 
             $this->model_checkout_order->addHistory($order['order_id'], $status_id, $message, true);
@@ -269,7 +283,7 @@ class Ngenius extends Model
      */
     public function orderPurchase(array $order, ApiProcessor $apiProcessor): array|string|null
     {
-	    $payment_result = $apiProcessor->getPaymentResult();
+        $payment_result = $apiProcessor->getPaymentResult();
 
         if (self::NGENIUS_PURCHASED === $this->ngeniusState) {
             $this->orderStatus = $this->ngenius::NG_COMPLETE;
@@ -277,10 +291,15 @@ class Ngenius extends Model
             $transaction_id = '';
 
             if (isset($payment_result[self::EMBEDDED_LITERAL][self::CAPTURE_LITERAL][0])) {
-	            $transaction_id = $apiProcessor->getTransactionId();
+                $transaction_id = $apiProcessor->getTransactionId();
             }
+
+            $total = $order['total'];
+
+            ValueFormatter::formatCurrencyDecimals($order['currency_code'] , $total);
+
             $message   = 'Captured Amount: ' . $order['currency_code']
-                         . $order['total'] . ' | Transaction ID: ' . $transaction_id;
+                         . $total . ' | Transaction ID: ' . $transaction_id;
             $status_id = $this->ngenius->getOrderStatusId($this, $this->ngenius::NG_COMPLETE);
 
             $this->model_checkout_order->addHistory($order['order_id'], $status_id, $message, true);
@@ -327,8 +346,6 @@ class Ngenius extends Model
 
             $orderTotals = $this->model_checkout_order->getTotals($this->session->data['order_id']);
 
-            ValueFormatter::formatCurrencyDecimals($order['currency_code'], $order['total']);
-
             $customerStoreCredit = 0.00;
 
             foreach ($orderTotals as $orderTotal) {
@@ -354,31 +371,31 @@ class Ngenius extends Model
             $capture_id        = '';
             $captured_amt      = 0;
             if (isset($payment_result['_id'])) {
-                $payment_id     = $apiProcessor->getPaymentId();
+                $payment_id = $apiProcessor->getPaymentId();
             }
 
             if ($apiProcessor->isPaymentConfirmed()) {
-                    switch ($action) {
-                        case 'AUTH':
-                            $this->orderAuthorize($order, $apiProcessor);
-                            break;
-                        case 'SALE':
-                            $capture_id   = $this->orderSale($order, $apiProcessor);
-                            $captured_amt = $order['total'];
-                            break;
-                        case 'PURCHASE':
-                            $capture_id   = $this->orderPurchase($order, $apiProcessor);
-                            $captured_amt = $order['total'];
-                            break;
-                        default:
-                            break;
-                    }
-                    $data_table['status'] = $this->orderStatus;
-                    $this->quantityReduce($order['order_id']);
+                switch ($action) {
+                    case 'AUTH':
+                        $this->orderAuthorize($order, $apiProcessor);
+                        break;
+                    case 'SALE':
+                        $capture_id   = $this->orderSale($order, $apiProcessor);
+                        $captured_amt = $order['total'];
+                        break;
+                    case 'PURCHASE':
+                        $capture_id   = $this->orderPurchase($order, $apiProcessor);
+                        $captured_amt = $order['total'];
+                        break;
+                    default:
+                        break;
+                }
+                $data_table['status'] = $this->orderStatus;
+                $this->quantityReduce($order['order_id']);
 
                 $redirect_url = $this->url->link('checkout/success');
             } elseif (self::NGENIUS_STARTED === $this->ngeniusState) {
-	            $data_table['status'] = $this->ngenius::NG_PENDING;
+                $data_table['status'] = $this->ngenius::NG_PENDING;
             } else {
                 $data_table['status'] = $this->ngenius::NG_FAILED;
                 switch ($action) {
@@ -415,7 +432,7 @@ class Ngenius extends Model
 
             return $redirect_url;
         } else {
-	        $this->ngenius->debug('N-GENIUS: Platform order not found');
+            $this->ngenius->debug('N-GENIUS: Platform order not found');
         }
 
         return false;
@@ -433,8 +450,8 @@ class Ngenius extends Model
 
         $this->load->model(self::CHECKOUT_LITERAL);
 
-        $order_info = $this->getNGeniusOrder($order_ref);
-	    $apiProcessor       = new ApiProcessor($order_info);
+        $order_info   = $this->getNGeniusOrder($order_ref);
+        $apiProcessor = new ApiProcessor($order_info);
 
         if (!isset($this->session->data['order_id'])) {
             $order = $this->fetchOrder("reference = '$order_ref'");
@@ -523,58 +540,58 @@ class Ngenius extends Model
 
         if (empty($orders)) {
             $this->ngenius->debug('N-GENIUS: Cron ended');
+
             return;
         }
 
         $this->load->model(self::CHECKOUT_LITERAL);
 
-	    $counter = 0;
+        $counter = 0;
 
         foreach ($orders as $ngeniusOrder) {
-	        if ($counter >= 5) {
-		        $this->ngenius->debug('N-GENIUS: Breaking loop at 5 orders to avoid timeout');
-		        break;
-	        }
+            if ($counter >= 5) {
+                $this->ngenius->debug('N-GENIUS: Breaking loop at 5 orders to avoid timeout');
+                break;
+            }
 
-
-			try {
-				$this->ngenius->debug('N-GENIUS: Processing order #' . $ngeniusOrder['order_id']);
+            try {
+                $this->ngenius->debug('N-GENIUS: Processing order #' . $ngeniusOrder['order_id']);
                 $ngeniusOrder['status'] = 'n-genius-Cron';
                 $this->updateTable($ngeniusOrder, $ngeniusOrder['nid']);
-                $ngeniusReference       = $ngeniusOrder['reference'];
-                $orderInfo              = $this->getNGeniusOrder($ngeniusReference);
+                $ngeniusReference = $ngeniusOrder['reference'];
+                $orderInfo        = $this->getNGeniusOrder($ngeniusReference);
 
-	            if (isset($orderInfo[self::EMBEDDED_LITERAL]['payment'])
-	                && is_array($orderInfo[self::EMBEDDED_LITERAL]['payment'])
-	            ) {
-	                $paymentResult = $orderInfo[self::EMBEDDED_LITERAL]['payment'][0];
-	                $action        = $orderInfo['action'] ?? '';
+                if (isset($orderInfo[self::EMBEDDED_LITERAL]['payment'])
+                    && is_array($orderInfo[self::EMBEDDED_LITERAL]['payment'])
+                ) {
+                    $paymentResult = $orderInfo[self::EMBEDDED_LITERAL]['payment'][0];
+                    $action        = $orderInfo['action'] ?? '';
 
-	                $this->ngeniusState = $paymentResult['state'] ?? '';
-	                $apiProcessor       = new ApiProcessor($orderInfo);
-	                $apiProcessor->processPaymentAction($action, $this->ngeniusState);
+                    $this->ngeniusState = $paymentResult['state'] ?? '';
+                    $apiProcessor       = new ApiProcessor($orderInfo);
+                    $apiProcessor->processPaymentAction($action, $this->ngeniusState);
 
-		            $this->ngenius->debug('N-GENIUS: State is ' . $ngeniusOrder['state']);
+                    $this->ngenius->debug('N-GENIUS: State is ' . $ngeniusOrder['state']);
 
-	                $this->load->model('checkout/order');
+                    $this->load->model('checkout/order');
 
-	                $order = $this->model_checkout_order->getOrder($ngeniusOrder['order_id']);
+                    $order = $this->model_checkout_order->getOrder($ngeniusOrder['order_id']);
 
-	                $this->session->data['order_id'] = $ngeniusOrder['order_id'];
+                    $this->session->data['order_id'] = $ngeniusOrder['order_id'];
 
-	                if ($apiProcessor->isPaymentAbandoned()) {
-	                    $paymentResult['state'] = self::NGENIUS_FAILED;
-	                    $this->orderStatus      = $this->ngenius::NG_DECLINED;
-	                }
+                    if ($apiProcessor->isPaymentAbandoned()) {
+                        $paymentResult['state'] = self::NGENIUS_FAILED;
+                        $this->orderStatus      = $this->ngenius::NG_DECLINED;
+                    }
 
-	                $this->processOrder($order, $apiProcessor, $action);
-	            } else {
+                    $this->processOrder($order, $apiProcessor, $action);
+                } else {
                     $this->ngenius->debug('N-GENIUS: Payment result not found');
-	            }
-			} catch(\Exception $error) {
-				$this->ngenius->debug('N-GENIUS: Exception ' . $error->getMessage());
-			}
-	        $counter++;
+                }
+            } catch (\Exception $error) {
+                $this->ngenius->debug('N-GENIUS: Exception ' . $error->getMessage());
+            }
+            $counter++;
         }
         $this->ngenius->debug('N-GENIUS: Cron ended');
     }

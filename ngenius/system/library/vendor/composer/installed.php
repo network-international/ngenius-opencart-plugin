@@ -1,42 +1,41 @@
-<?php return array (
-  'root' => 
-  array (
-    'pretty_version' => 'dev-develop',
-    'version' => 'dev-develop',
-    'aliases' => 
-    array (
+<?php return array(
+    'root' => array(
+        'name' => 'tools/opencart',
+        'pretty_version' => 'dev-develop',
+        'version' => 'dev-develop',
+        'reference' => 'c7bec915e99402bd646076ee14f5d46e04f8e284',
+        'type' => 'composer-plugin',
+        'install_path' => __DIR__ . '/../../',
+        'aliases' => array(),
+        'dev' => true,
     ),
-    'reference' => '3683343411871970729d415f9e4e5e1f4a5f8e88',
-    'name' => 'tools/opencart',
-  ),
-  'versions' => 
-  array (
-    'megastruktur/phone-country-codes' => 
-    array (
-      'pretty_version' => '0.4',
-      'version' => '0.4.0.0',
-      'aliases' => 
-      array (
-      ),
-      'reference' => '9d396143a73b08c0109053cf0c1cccdf8f78cfc1',
+    'versions' => array(
+        'megastruktur/phone-country-codes' => array(
+            'pretty_version' => '0.4',
+            'version' => '0.4.0.0',
+            'reference' => '9d396143a73b08c0109053cf0c1cccdf8f78cfc1',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../megastruktur/phone-country-codes',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'ngenius/ngenius-common' => array(
+            'pretty_version' => 'v1.0.12',
+            'version' => '1.0.12.0',
+            'reference' => 'fcf6b32e6e8946f86ca87d7955d3d4b56d8f372e',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../ngenius/ngenius-common',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'tools/opencart' => array(
+            'pretty_version' => 'dev-develop',
+            'version' => 'dev-develop',
+            'reference' => 'c7bec915e99402bd646076ee14f5d46e04f8e284',
+            'type' => 'composer-plugin',
+            'install_path' => __DIR__ . '/../../',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
     ),
-    'ngenius/ngenius-common' => 
-    array (
-      'pretty_version' => 'v1.0.12',
-      'version' => '1.0.12.0',
-      'aliases' => 
-      array (
-      ),
-      'reference' => 'fcf6b32e6e8946f86ca87d7955d3d4b56d8f372e',
-    ),
-    'tools/opencart' => 
-    array (
-      'pretty_version' => 'dev-develop',
-      'version' => 'dev-develop',
-      'aliases' => 
-      array (
-      ),
-      'reference' => '3683343411871970729d415f9e4e5e1f4a5f8e88',
-    ),
-  ),
 );

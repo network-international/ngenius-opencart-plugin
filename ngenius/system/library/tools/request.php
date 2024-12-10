@@ -177,8 +177,8 @@ class Request
      */
     public function captureOrder(array $order_item, float $amount): array
     {
-	    $currencyCode = $order_item['currency'];
-	    $amount       = ValueFormatter::floatToIntRepresentation($currencyCode, $amount);
+        $currencyCode = $order_item['currency'];
+        $amount       = ValueFormatter::floatToIntRepresentation($currencyCode, $amount);
 
         return [
             'data'   => [
@@ -208,8 +208,8 @@ class Request
      */
     public function refundOrder(array $order_item, float $amount, $capture_id, $url = null): array
     {
-	    $currencyCode = $order_item['currency'];
-	    $amount       = ValueFormatter::floatToIntRepresentation($currencyCode, $amount);
+        $currencyCode = $order_item['currency'];
+        $amount       = ValueFormatter::floatToIntRepresentation($currencyCode, $amount);
 
         return [
             'data'   => [
@@ -233,8 +233,8 @@ class Request
 
     public function refundPurchase(array $order_item, float $amount): array
     {
-	    $currencyCode = $order_item['currency'];
-	    $amount       = ValueFormatter::floatToIntRepresentation($currencyCode, $amount);
+        $currencyCode = $order_item['currency'];
+        $amount       = ValueFormatter::floatToIntRepresentation($currencyCode, $amount);
 
         return [
             'data'   => [
@@ -254,8 +254,8 @@ class Request
 
     public function voidPurchase(array $order_item, float $amount, $capture_id): array
     {
-	    $currencyCode = $order_item['currency'];
-	    $amount       = ValueFormatter::floatToIntRepresentation($currencyCode, $amount);
+        $currencyCode = $order_item['currency'];
+        $amount       = ValueFormatter::floatToIntRepresentation($currencyCode, $amount);
 
         return [
             'data'   => [

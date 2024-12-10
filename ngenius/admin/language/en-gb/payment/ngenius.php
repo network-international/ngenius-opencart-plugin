@@ -1,7 +1,7 @@
 <?php
 
 // Heading
-$_['heading_title'] = 'N-Genius Payment Gateway - 1.1.0';
+$_['heading_title'] = 'N-Genius Payment Gateway - 1.1.1';
 
 // Text
 $_['text_extension'] = 'Extensions';
