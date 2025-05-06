@@ -1,7 +1,7 @@
 <?php
 
 // Heading
-$_['heading_title'] = 'N-Genius Payment Gateway - 1.1.1';
+$_['heading_title'] = 'N-Genius Online by Network - 1.1.2';
 
 // Text
 $_['text_extension'] = 'Extensions';
@@ -37,7 +37,7 @@ $_['debug']                      = 'Debug Log';
 $_['debug_cron']                 = 'Debug Cron';
 $_['text_debug_yes']             = 'Yes';
 $_['text_debug_no']              = 'No';
-$_['text_title']                 = 'N-Genius Payment Gateway';
+$_['text_title']                 = 'N-Genius Online by Network';
 $_['uat_api_url_text']           = 'Sandbox API URL';
 $_['uat_api_url_value']          = 'fggdfgfdgdfgfdgdfgfdgdfg';
 $_['live_api_url_text']          = 'Live API URL';

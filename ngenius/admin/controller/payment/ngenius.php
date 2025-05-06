@@ -531,7 +531,7 @@ class Ngenius extends Controller
 
             $total = $orderInfo['captured_amt'];
 
-            ValueFormatter::formatCurrencyDecimals($order['currency_code'] , $total);
+            ValueFormatter::formatCurrencyDecimals($order['currency_code'], $total);
 
             $json['success'] = self::AMOUNT_LITERAL . $order['currency_code']
                                . $total . ' captured successfully.';

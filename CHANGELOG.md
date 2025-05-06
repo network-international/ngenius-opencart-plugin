@@ -1,5 +1,12 @@
 # Changelog
 
+## [[1.1.2]](https://github.com/network-international/ngenius-opencart-plugin/releases/tag/1.1.2)
+
+### Changed
+
+- Updated the payment method name to “N-Genius Online by Network” for better brand consistency.
+- Improve token error message display.
+
 ## [[1.1.1]](https://github.com/network-international/ngenius-opencart-plugin/releases/tag/1.1.1)
 
 ### Fixed
