@@ -1,7 +1,7 @@
 <?php
 
 // Text
-$_['text_title']       = 'N-Genius Payment Gateway';
+$_['text_title']       = 'N-Genius Online by Network';
 $_['text_credit_card'] = 'Credit Card Details';
 $_['text_testing']     = 'This payment gatngenius is currently being tested.
  Your credit card will not be charged.<br />If this is a real order,

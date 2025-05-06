@@ -170,7 +170,7 @@ class Ngenius extends Controller
                 }
             } else {
                 // No token
-                $error = $token['error'] ?? 'Unknown';
+                $error = $token['error'] ?? 'Error! Invalid configuration.';
                 echo "<h3><strong>Error: $error</strong></h3>";
                 echo '<br>';
                 echo 'Use the browser back button to try again<br>';
