@@ -88,7 +88,7 @@ class Request
         $currencyCode = $order['currency_code'];
         $amount       = ValueFormatter::floatToIntRepresentation($currencyCode, $order['total']);
         $countryCode  = !empty($order['shipping_iso_code_2'])
-            ? $order['shipping_iso_code_2'] : $order['payment_iso_code_2'];
+            ? $order['shipping_iso_code_2'] : ($order['payment_iso_code_2'] ?? '');
         $utilities    = new NgeniusUtilities();
 
         return [
@@ -283,6 +283,16 @@ class Request
             'method' => 'GET',
             'uri'    => $this->library->getOrderStatusUrl(
                 $data['reference']
+            ),
+        ];
+    }
+
+    public function cancelOrder(string $orderReference): array
+    {
+        return [
+            'method' => 'PUT',
+            'uri'    => $this->library->getOrderCancelUrl(
+                $orderReference
             ),
         ];
     }

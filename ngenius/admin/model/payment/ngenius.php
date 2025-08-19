@@ -35,6 +35,7 @@ class Ngenius extends Model
                     `status` varchar(50) NOT NULL COMMENT 'Status',
                     `payment_id` text NOT NULL COMMENT 'Payment Id',
                     `captured_amt` decimal(12,4) UNSIGNED NOT NULL COMMENT 'Captured Amount',
+                    `expiry_date` DATETIME NOT NULL DEFAULT 0 COMMENT 'Invoice Expiry Days',
                     `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                      COMMENT 'Created At',
                     PRIMARY KEY (`nid`),
@@ -42,8 +43,24 @@ class Ngenius extends Model
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='n-genius order table';"
         );
 
+        $this->upgrade();
         $this->enablePermission();
     }
+
+    public function upgrade(): void
+    {
+        // Check and add expiry_days if missing
+        $query = $this->db->query(
+            "SHOW COLUMNS FROM `" . DB_PREFIX . "ngenius_networkinternational` LIKE 'expiry_date'"
+        );
+        if (!$query->num_rows) {
+            $this->db->query(
+                "ALTER TABLE `" . DB_PREFIX . "ngenius_networkinternational`
+                 ADD COLUMN `expiry_date` DATETIME NOT NULL DEFAULT 0 COMMENT 'Invoice Expiry Days' AFTER `captured_amt`"
+            );
+        }
+    }
+
 
     /**
      * uninstall
@@ -66,6 +83,56 @@ class Ngenius extends Model
         $query = $this->db->query($sql);
 
         return $query->row;
+    }
+
+    /**
+     * Get order details from table
+     *
+     * @param int $orderId
+     *
+     * @return mixed
+     */
+    public function getOpencartOrder(int $orderId): mixed
+    {
+        $sql   = "SELECT * FROM " . DB_PREFIX . "order" . " WHERE order_id = '" . $orderId . "'";
+        $query = $this->db->query($sql);
+
+        return $query->row;
+    }
+
+    /**
+     * Insert data to the ngenius table
+     *
+     * @param type $data
+     *
+     * @return last inserted id
+     */
+    public function insertOrderInfo(array $data)
+    {
+        $exists = $this->db->query(
+            "SELECT order_id FROM `" . DB_PREFIX . "ngenius_networkinternational` WHERE order_id = " . (int)$data['order_id']
+        );
+
+        if ($exists->num_rows > 0) {
+            // Optional: Update the existing record
+            $this->db->query(
+                "UPDATE `" . DB_PREFIX . "ngenius_networkinternational`
+				 SET amount = {$data['amount']}, currency = '{$data['currency']}',
+					 reference = '{$data['reference']}', action = '{$data['action']}', state = '{$data['state']}',
+					 status = '{$data['status']}'
+				 WHERE order_id = {$data['order_id']}"
+            );
+        } else {
+            // Insert new record
+            $this->db->query(
+                "INSERT INTO `" . DB_PREFIX . "ngenius_networkinternational`
+				 SET order_id = {$data['order_id']}, amount = {$data['amount']}, currency = '{$data['currency']}',
+					  reference = '{$data['reference']}', action = '{$data['action']}', state = '{$data['state']}',
+					   status = '{$data['status']}', expiry_date = '{$data['expiry_date']}'"
+            );
+        }
+
+        return $this->db->getLastId();
     }
 
     /**
@@ -174,6 +241,23 @@ class Ngenius extends Model
             . (int)$notify . "', comment = '" . $this->db->escape(
                 $comment
             ) . "', date_added = NOW()"
+        );
+    }
+
+    /**
+     * @param $order_id
+     * @param $state
+     * @param $status
+     *
+     * @return void
+     */
+    public function updateOrderStateAndStatus($order_id, $state, $status): void
+    {
+        $this->db->query(
+            "UPDATE `" . DB_PREFIX . "ngenius_networkinternational`
+			 SET state = '" . $this->db->escape($state) . "',
+				 status = '" . $this->db->escape($status) . "'
+			 WHERE order_id = '" . (int)$order_id . "'"
         );
     }
 

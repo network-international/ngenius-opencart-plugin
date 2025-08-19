@@ -50,10 +50,9 @@ class Ngenius extends Model
         } else {
             $title = $this->config->get('payment_ngenius_title');
         }
-
         $option_data['ngenius'] = [
             'code' => 'ngenius.ngenius',
-            'name' => $this->language->get('text_title')
+            'name' => $this->language->get('text_title'),
         ];
 
         return array(
@@ -563,19 +562,28 @@ class Ngenius extends Model
     }
 
     /**
-     * @param $orders
+     * Generic cron processor.
+     *
+     * @param array $orders
+     * @param string $logPrefix
+     * @param string $statusLabel
+     * @param bool $checkExpiry
      *
      * @return void
      */
-    public function processCron($orders): void
-    {
+    private function processCronOrders(
+        array $orders,
+        string $logPrefix,
+        string $statusLabel,
+        bool $checkExpiry = false
+    ): void {
         $this->ngenius = new NgeniusTools($this->registry);
 
-        $this->ngenius->debug('N-GENIUS: Cron started');
-        $this->ngenius->debug('N-GENIUS: Found ' . sizeof($orders) . ' unprocessed order(s)');
+        $this->ngenius->debug("N-GENIUS: {$logPrefix} started");
+        $this->ngenius->debug("N-GENIUS: Found " . sizeof($orders) . " unprocessed {$logPrefix} order(s)");
 
         if (empty($orders)) {
-            $this->ngenius->debug('N-GENIUS: Cron ended');
+            $this->ngenius->debug("N-GENIUS: {$logPrefix} ended");
 
             return;
         }
@@ -583,50 +591,81 @@ class Ngenius extends Model
         $this->load->model(self::CHECKOUT_LITERAL);
 
         $counter = 0;
-
         foreach ($orders as $ngeniusOrder) {
             if ($counter >= 5) {
-                $this->ngenius->debug('N-GENIUS: Breaking loop at 5 orders to avoid timeout');
+                $this->ngenius->debug("N-GENIUS: Breaking loop at 5 orders to avoid timeout");
                 break;
             }
 
             try {
-                $this->ngenius->debug('N-GENIUS: Processing order #' . $ngeniusOrder['order_id']);
-                $ngeniusOrder['status'] = 'n-genius-Cron';
+                $this->ngenius->debug("N-GENIUS: Processing {$logPrefix} order #" . $ngeniusOrder['order_id']);
+                $ngeniusOrder['status'] = $statusLabel;
                 $this->updateTable($ngeniusOrder, $ngeniusOrder['nid']);
+
                 $ngeniusReference = $ngeniusOrder['reference'];
                 $orderInfo        = $this->getNGeniusOrder($ngeniusReference);
 
-                if (isset($orderInfo[self::EMBEDDED_LITERAL]['payment'])
-                    && is_array($orderInfo[self::EMBEDDED_LITERAL]['payment'])
-                ) {
+                if (isset($orderInfo[self::EMBEDDED_LITERAL]['payment']) && is_array(
+                        $orderInfo[self::EMBEDDED_LITERAL]['payment']
+                    )) {
                     $paymentResult = $orderInfo[self::EMBEDDED_LITERAL]['payment'][0];
                     $action        = $orderInfo['action'] ?? '';
 
                     $this->ngeniusState = $paymentResult['state'] ?? '';
                     $apiProcessor       = new ApiProcessor($orderInfo);
 
-                    if (!empty($orderInfo[self::EMBEDDED_LITERAL]['payment'][0]['paymentMethod'])) {
+                    if (!empty($paymentResult['paymentMethod'])) {
                         $apiProcessor->processPaymentAction($action, $this->ngeniusState);
                     }
 
-                    $this->ngenius->debug('N-GENIUS: State is ' . $ngeniusOrder['state']);
+                    $this->ngenius->debug("N-GENIUS: State is " . $ngeniusOrder['state']);
 
                     $this->load->model('checkout/order');
-
-                    $order = $this->model_checkout_order->getOrder($ngeniusOrder['order_id']);
-
+                    $order                           = $this->model_checkout_order->getOrder($ngeniusOrder['order_id']);
                     $this->session->data['order_id'] = $ngeniusOrder['order_id'];
 
-                    $this->processOrder($order, $apiProcessor, $action);
+                    if ($checkExpiry) {
+                        $expiryDate = (new \DateTime($ngeniusOrder['expiry_date']))->format('Y-m-d');
+                        $today      = (new \DateTime('now'))->format('Y-m-d');
+
+                        if (
+                            $paymentResult['state'] !== 'STARTED' || $today > $expiryDate
+                        ) {
+                            $this->processOrder($order, $apiProcessor, $action);
+                        } else {
+                            $ngeniusOrder['status'] = 'n-genius-PBL-Pending';
+                            $this->updateTable($ngeniusOrder, $ngeniusOrder['nid']);
+                        }
+                    } else {
+                        $this->processOrder($order, $apiProcessor, $action);
+                    }
                 } else {
-                    $this->ngenius->debug('N-GENIUS: Payment result not found');
+                    $this->ngenius->debug("N-GENIUS: {$logPrefix} Payment result not found");
                 }
             } catch (\Exception $error) {
-                $this->ngenius->debug('N-GENIUS: Exception ' . $error->getMessage());
+                $this->ngenius->debug("N-GENIUS: {$logPrefix} Exception " . $error->getMessage());
             }
+
             $counter++;
         }
-        $this->ngenius->debug('N-GENIUS: Cron ended');
+
+        $this->ngenius->debug("N-GENIUS: {$logPrefix} ended");
     }
+
+    /**
+     * Wrapper for standard cron processing.
+     */
+    public function processCron($orders): void
+    {
+        $this->processCronOrders($orders, 'Cron', 'n-genius-Cron');
+    }
+
+    /**
+     * Wrapper for PBL cron processing with expiry check.
+     */
+    public function processPBLCron($orders): void
+    {
+        $this->processCronOrders($orders, 'PBL Cron', 'n-genius-PBL-Cron', true);
+    }
+
 }

@@ -10,17 +10,18 @@ class Ngenius
     /**
      * Config ngenius statuses
      */
-    public const NG_PENDING    = 'n-genius-Pending';
-    public const NG_PROCESSING = 'n-genius-Processing';
-    public const NG_FAILED     = 'n-genius-Failed';
-    public const NG_COMPLETE   = 'n-genius-Complete';
-    public const NG_AUTHORISED = 'n-genius-Authorised';
-    public const NG_F_CAPTURED = 'n-genius-Fully-Captured';
-    public const NG_F_REFUNDED = 'n-genius-Fully-Refunded';
-    public const NG_P_CAPTURED = 'n-genius-Partially-Captured';
-    public const NG_P_REFUNDED = 'n-genius-Partially-Refunded';
-    public const NG_AUTH_REV   = 'n-genius-Auth-Reversed';
-    public const NG_DECLINED   = 'n-genius-Declined';
+    public const NG_PENDING     = 'n-genius-Pending';
+    public const NG_PBL_PENDING = 'n-genius-PBL-Pending';
+    public const NG_PROCESSING  = 'n-genius-Processing';
+    public const NG_FAILED      = 'n-genius-Failed';
+    public const NG_COMPLETE    = 'n-genius-Complete';
+    public const NG_AUTHORISED  = 'n-genius-Authorised';
+    public const NG_F_CAPTURED  = 'n-genius-Fully-Captured';
+    public const NG_F_REFUNDED  = 'n-genius-Fully-Refunded';
+    public const NG_P_CAPTURED  = 'n-genius-Partially-Captured';
+    public const NG_P_REFUNDED  = 'n-genius-Partially-Refunded';
+    public const NG_AUTH_REV    = 'n-genius-Auth-Reversed';
+    public const NG_DECLINED    = 'n-genius-Declined';
     /**
      * Config tags
      */
@@ -36,6 +37,7 @@ class Ngenius
     public const REFUND_ENDPOINT          = '/transactions/outlets/%s/orders/%s/payments/%s/captures/%s/refund';
     public const PURCHASE_REFUND_ENDPOINT = '/transactions/outlets/%s/orders/%s/payments/%s/cancel';
     public const VOID_ENDPOINT            = '/transactions/outlets/%s/orders/%s/payments/%s/cancel';
+    public const CANCEL_ENDPOINT          = '/transactions/outlets/%s/orders/%s/cancel';
     /**
      *
      * @var session,curl,config
@@ -208,6 +210,13 @@ class Ngenius
         return $this->getApiUrl() . $endpoint;
     }
 
+    public function getOrderCancelUrl($orderRef)
+    {
+        $endpoint = sprintf(self::CANCEL_ENDPOINT, $this->getOutletReferenceId(), $orderRef);
+
+        return $this->getApiUrl() . $endpoint;
+    }
+
     /**
      * Gets Order Refund URL
      *
@@ -299,7 +308,8 @@ class Ngenius
             [$lang => ['name' => self::NG_P_CAPTURED]],
             [$lang => ['name' => self::NG_P_REFUNDED]],
             [$lang => ['name' => self::NG_AUTH_REV]],
-            [$lang => ['name' => self::NG_DECLINED]]
+            [$lang => ['name' => self::NG_DECLINED]],
+            [$lang => ['name' => self::NG_PBL_PENDING]]
         );
     }
 

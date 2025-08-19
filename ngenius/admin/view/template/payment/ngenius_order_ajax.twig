@@ -35,6 +35,19 @@
         <td>{{ column_created_at }}</td>
         <td>{{ created_at }}</td>
     </tr>
+    {% if pbl_cancel_url %}
+        <tr>
+            <td>{{ column_cancel }}</td>
+            <td>
+                <button
+                        class="btn btn-primary cancel-pbl-button"
+                        data-type="cancel_pbl"
+                        data-reference="{{ reference|e }}">
+                    {{ button_cancel }}
+                </button>
+            </td>
+        </tr>
+    {% endif %}
 </table>
 
 <table class="table table-bordered">
@@ -133,7 +146,7 @@
           type: type,
           capture_id: capture_id,
           amount: $(this).prev('input').val(),
-          order_id: '{{ order_id }}'
+          order_id: '{{ order_id }}',
         },
         dataType: 'json',
         beforeSend: function () {
@@ -147,7 +160,6 @@
         success: function (json) {
           const notification = $('#notification')
           notification.removeClass('alert alert-danger alert-success')
-          console.log(json)
           if (json.error) {
             notification.show().addClass('alert alert-danger').html('<i class="fa fa-check-circle"></i> ' + json.error)
           }
@@ -164,3 +176,51 @@
     }
   })
 </script>
+<script type="text/javascript">
+  $(document).ready(function () {
+
+    $('.cancel-pbl-button').on('click', function () {
+      var type = $(this).attr('data-type')
+      var clicked_button = $(this)
+
+      if (type === 'cancel_pbl') {
+        var reference = clicked_button.data('reference')
+        var userToken = '{{ user_token|e('js') }}'
+        var action = '{{ action|e('js') }}'
+
+        $.ajax({
+          url: 'index.php?route=extension/ngenius/payment/ngenius|cancelPBLOrder&user_token=' + userToken,
+          type: 'POST',
+          data: {
+            reference: reference,
+            action: action
+
+          },
+          dataType: 'json',
+          success: function (json) {
+            const $notification = $('#notification')
+            $notification.removeClass('alert alert-danger alert-success')
+
+            if (json.error) {
+              $notification.show().addClass('alert alert-danger')
+                .html('<i class="fa fa-exclamation-circle"></i> ' + json.error)
+            }
+
+            if (json.success) {
+              $notification.show().addClass('alert alert-success')
+                .html('<i class="fa fa-check-circle"></i> ' + json.success)
+              setTimeout(function () {
+                location.reload()
+              }, 2000)
+            }
+          },
+          error: function () {
+            $('#notification').show().addClass('alert alert-danger')
+              .html('<i class="fa fa-exclamation-circle"></i> AJAX failed.')
+          }
+        })
+      }
+    })
+  })
+</script>
+

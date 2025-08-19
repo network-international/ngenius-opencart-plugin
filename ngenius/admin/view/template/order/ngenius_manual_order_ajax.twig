@@ -1,0 +1,134 @@
+<legend>{{ text__header_title }}</legend>
+<table class="table table-bordered">
+    <tr>
+        <td>{{ text_expiry_date }}</td>
+        <td><input id="expiry_date" name="expiry_date" type="number" value="{{ expiry_date }}" min="1" max="90"></td>
+    </tr>
+    <tr>
+        <td>{{ text_payment_attempt }}</td>
+        <td><input id="payment_attempt" name="payment_attempt" type="number" value="{{ payment_attempt }}" min="1"
+                   max="5"></td>
+    </tr>
+    <tr>
+        <td>{{ text_amount_input }}</td>
+        <td>
+            <strong>{{ currency }}</strong>
+            <input id="order_amount_input" size="8" text="text" name="order_amount"
+                   value="{{ amount|number_format(2, '.', '') }}"/>
+            <button id="update_order_amount"
+                    class="btn btn-sm btn-secondary button-command"
+                    type="button"
+                    data-type="update">
+                Update Amount
+            </button>
+        </td>
+    </tr>
+    <tr>
+        <td>{{ column_send_pbl }}</td>
+        <td>
+            <button class="btn btn-primary button-command"
+                    id="button_pbl"
+                    type="button"
+                    data-type="send_pbl">
+                {{ button_pbl }}
+            </button>
+        </td>
+    </tr>
+</table>
+<script type="text/javascript" nonce="{{ nonce }}">
+  $(document).ready(function () {
+
+    $('.button-command').on('click', function () {
+      var type = $(this).attr('data-type')
+      var clicked_button = $(this)
+
+      if (type === 'update') {
+        var orderId = '{{ order_id|e('js') }}'
+        var userToken = '{{ user_token|e('js') }}'
+        var amount = $('#order_amount_input').val()
+
+        $.ajax({
+          url: 'index.php?route=extension/ngenius/payment/ngenius|updateTotal&user_token=' + userToken,
+          type: 'POST',
+          data: {
+            order_id: orderId,
+            total: amount
+          },
+          dataType: 'json',
+          success: function (json) {
+            const $notification = $('#notification')
+            $notification.removeClass('alert alert-danger alert-success')
+
+            if (json.error) {
+              $notification.show().addClass('alert alert-danger')
+                .html('<i class="fa fa-exclamation-circle"></i> ' + json.error)
+            }
+
+            if (json.success) {
+              $notification.show().addClass('alert alert-success')
+                .html('<i class="fa fa-check-circle"></i> Amount Updated ')
+              setTimeout(function () {
+                location.reload()
+              }, 2000)
+            }
+          },
+          error: function () {
+            $('#notification').show().addClass('alert alert-danger')
+              .html('<i class="fa fa-exclamation-circle"></i> AJAX failed.')
+          }
+        })
+      }
+    })
+  })
+</script>
+<script type="text/javascript" nonce="{{ nonce }}">
+  $(document).ready(function () {
+
+    $('.button-command').on('click', function () {
+      var type = $(this).attr('data-type')
+      var clicked_button = $(this)
+
+      if (type === 'send_pbl') {
+        var orderId = '{{ order_id|e('js') }}'
+        var userToken = '{{ user_token|e('js') }}'
+        var amount = $('#order_amount_input').val()
+        var expiryDate = $('input[name="expiry_date"]').val()
+        var attempt = $('input[name="payment_attempt"]').val()
+
+        $.ajax({
+          url: 'index.php?route=extension/ngenius/payment/ngenius|sendPaybyLink&user_token=' + userToken,
+          type: 'POST',
+          data: {
+            order_id: orderId,
+            amount: amount,
+            expiry_date: expiryDate,
+            payment_attempt: attempt
+          },
+          dataType: 'json',
+          success: function (json) {
+            const $notification = $('#notification')
+            $notification.removeClass('alert alert-danger alert-success')
+
+            if (json.error) {
+              $notification.show().addClass('alert alert-danger')
+                .html('<i class="fa fa-exclamation-circle"></i> ' + json.error)
+            }
+
+            if (json.success) {
+              $notification.show().addClass('alert alert-success')
+                .html('<i class="fa fa-check-circle"></i> ' + json.success)
+              setTimeout(function () {
+                location.reload()
+              }, 2000)
+            }
+          },
+          error: function () {
+            $('#notification').show().addClass('alert alert-danger')
+              .html('<i class="fa fa-exclamation-circle"></i> AJAX failed.')
+          }
+        })
+      }
+    })
+  })
+</script>
+

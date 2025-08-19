@@ -79,16 +79,17 @@ class Ngenius extends Model
         $ngenius = new \Opencart\System\Library\Ngenius($this->registry);
 
         return array(
-            $ngenius::NG_PENDING    => $ngenius::NG_PENDING,
-            $ngenius::NG_PROCESSING => $ngenius::NG_PROCESSING,
-            $ngenius::NG_FAILED     => $ngenius::NG_FAILED,
-            $ngenius::NG_COMPLETE   => $ngenius::NG_COMPLETE,
-            $ngenius::NG_AUTHORISED => $ngenius::NG_AUTHORISED,
-            $ngenius::NG_F_CAPTURED => $ngenius::NG_F_CAPTURED,
-            $ngenius::NG_P_CAPTURED => $ngenius::NG_P_CAPTURED,
-            $ngenius::NG_AUTH_REV   => $ngenius::NG_AUTH_REV,
-            $ngenius::NG_F_REFUNDED => $ngenius::NG_F_REFUNDED,
-            $ngenius::NG_P_REFUNDED => $ngenius::NG_P_REFUNDED
+            $ngenius::NG_PENDING     => $ngenius::NG_PENDING,
+            $ngenius::NG_PROCESSING  => $ngenius::NG_PROCESSING,
+            $ngenius::NG_FAILED      => $ngenius::NG_FAILED,
+            $ngenius::NG_COMPLETE    => $ngenius::NG_COMPLETE,
+            $ngenius::NG_AUTHORISED  => $ngenius::NG_AUTHORISED,
+            $ngenius::NG_F_CAPTURED  => $ngenius::NG_F_CAPTURED,
+            $ngenius::NG_P_CAPTURED  => $ngenius::NG_P_CAPTURED,
+            $ngenius::NG_AUTH_REV    => $ngenius::NG_AUTH_REV,
+            $ngenius::NG_F_REFUNDED  => $ngenius::NG_F_REFUNDED,
+            $ngenius::NG_P_REFUNDED  => $ngenius::NG_P_REFUNDED,
+            $ngenius::NG_PBL_PENDING => $ngenius::NG_PBL_PENDING
         );
     }
 }
