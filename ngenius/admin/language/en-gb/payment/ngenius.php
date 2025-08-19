@@ -7,8 +7,8 @@ $_['heading_title'] = 'N-Genius Online by Network - 1.2.0';
 $_['text_extension'] = 'Extensions';
 $_['text_success']   = 'Success: You have modified Ngenius payment module!';
 $_['text_edit']      = 'Edit';
-$_['text_ngenius']   = '<img src="/extension/ngenius/admin/view/image/payment/ngenius.jpg"
-alt="n-genius" title="n-genius" style="border: 1px solid #EEEEEE;" />';
+$_['text_ngenius']   = '<img src="/extension/ngenius/admin/view/image/payment/ngenius_logo.png"
+alt="n-genius" title="n-genius" style="height: 18px;" />';
 
 // Entry
 $_['order_status'] = 'Status of new order';
