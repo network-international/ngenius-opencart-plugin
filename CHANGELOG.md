@@ -1,5 +1,16 @@
 # Changelog
 
+## [[1.2.0]](https://github.com/network-international/ngenius-opencart-plugin/releases/tag/1.2.0)
+
+### Added
+
+- Updated to the Network logo.
+- Integrated the N-Genius PayByLink feature, allowing customers to pay via a link sent to their email or phone.
+
+### Tested
+
+- Compatibility with N-Genius Common Library v1.3.0.
+
 ## [[1.1.2]](https://github.com/network-international/ngenius-opencart-plugin/releases/tag/1.1.2)
 
 ### Changed

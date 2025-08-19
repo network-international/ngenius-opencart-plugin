@@ -13,6 +13,7 @@ use Ngenius\NgeniusCommon\Processor\ApiProcessor;
 use Ngenius\NgeniusCommon\Processor\RefundProcessor;
 use NumberFormatter;
 use Opencart\System\Engine\Controller;
+use Opencart\System\Library\Log;
 use Opencart\System\Library\Tools\Request;
 use Opencart\System\Library\Tools\Validate;
 use Opencart\Catalog\Model\Extension\Ngenius\Payment\Ngenius as NgeniusOrder;
@@ -29,10 +30,11 @@ class Ngenius extends Controller
      * @var array
      */
     private array $error = array();
-    public const EXTENSION_DIR  = "extension/ngenius/payment/ngenius";
-    public const USER_TOKEN     = "user_token=";
-    public const PAYMENT_TYPE   = "&type=payment";
-    public const AMOUNT_LITERAL = "An amount ";
+    public const EXTENSION_DIR              = "extension/ngenius/payment/ngenius";
+    public const USER_TOKEN                 = "user_token=";
+    public const PAYMENT_TYPE               = "&type=payment";
+    public const AMOUNT_LITERAL             = "An amount ";
+    public const REDIRECT_EXTENSION_LITERAL = "extension/ngenius/payment/ngenius";
 
     /**
      * Index function
@@ -266,91 +268,408 @@ class Ngenius extends Controller
 
         $data = $this->model_extension_ngenius_payment_ngenius->getOrder($this->request->get['order_id']);
 
-        $data['customer_transaction'] = array();
-        $customerTransaction          = $this->model_extension_ngenius_payment_ngenius->getCustomerTransaction(
-            $this->request->get['order_id']
-        );
+        if (!empty($data)) {
+            $data['customer_transaction'] = array();
+            $customerTransaction          = $this->model_extension_ngenius_payment_ngenius->getCustomerTransaction(
+                $this->request->get['order_id']
+            );
 
-        ValueFormatter::formatCurrencyDecimals($data['currency'], $data['amount']);
+            ValueFormatter::formatCurrencyDecimals($data['currency'], $data['amount']);
 
-        ValueFormatter::formatCurrencyDecimals($data['currency'], $data['captured_amt']);
+            ValueFormatter::formatCurrencyDecimals($data['currency'], $data['captured_amt']);
 
-        if ($data['action'] === 'SALE' && $data['state'] === 'PURCHASED') {
-            $getNgeniusOrder = $this->model_extension_ngenius_payment_ngenius->getNGeniusOrder($data['reference']);
-            $apiProcessor    = new ApiProcessor($getNgeniusOrder);
-            $captureId       = $apiProcessor->getTransactionId();
-            if (!empty($captureId)) {
-                $dataArray = [
-                    'captured_amt' => $data['captured_amt'],
-                    'state'        => $apiProcessor->getState(),
-                    'status'       => $data['status'],
-                ];
-                $this->model_extension_ngenius_payment_ngenius->updateTable($dataArray, (int)$data['order_id']);
+            if ($data['action'] === 'SALE' && $data['state'] === 'PURCHASED') {
+                $getNgeniusOrder = $this->model_extension_ngenius_payment_ngenius->getNGeniusOrder($data['reference']);
+                $apiProcessor    = new ApiProcessor($getNgeniusOrder);
+                $captureId       = $apiProcessor->getTransactionId();
+                if (!empty($captureId)) {
+                    $dataArray = [
+                        'captured_amt' => $data['captured_amt'],
+                        'state'        => $apiProcessor->getState(),
+                        'status'       => $data['status'],
+                    ];
+                    $this->model_extension_ngenius_payment_ngenius->updateTable($dataArray, (int)$data['order_id']);
 
-                $comment = json_encode(array('captureId' => $captureId));
+                    $comment = json_encode(array('captureId' => $captureId));
 
-                $this->model_extension_ngenius_payment_ngenius->addTransaction(
-                    $customerTransaction[0]['customer_id'],
-                    $comment,
-                    (float)$dataArray['captured_amt'],
-                    $customerTransaction[0]['order_id']
-                );
+                    $this->model_extension_ngenius_payment_ngenius->addTransaction(
+                        $customerTransaction[0]['customer_id'],
+                        $comment,
+                        (float)$dataArray['captured_amt'],
+                        $customerTransaction[0]['order_id']
+                    );
 
-                $customerTransaction = $this->model_extension_ngenius_payment_ngenius->getCustomerTransaction(
-                    $this->request->get['order_id']
-                );
-            }
-        }
-
-        foreach ($customerTransaction as $key => $transaction) {
-            $jsonData = json_decode($transaction['description'], true);
-            if ($jsonData) {
-                foreach ($jsonData as $key => $value) {
-                    ValueFormatter::formatCurrencyDecimals($data['currency'], $transaction['amount']);
-
-                    $transaction['amount'] = $data['currency'] . $transaction['amount'];
-                    $transaction['id']     = $value;
-                    switch ($key) {
-                        case 'captureId':
-                            $transaction['message'] = 'Transaction: Captured';
-                            if (
-                                $data['state'] === 'CAPTURED'
-                                || $data["state"] === 'PARTIALLY_REFUNDED'
-                                || $data["state"] === 'PURCHASED'
-                            ) {
-                                $transaction['refund_button'] = true;
-                            }
-                            break;
-                        case 'refundedId':
-                            $transaction['message'] = 'Transaction: Refunded';
-                            break;
-                        case 'AuthId':
-                            $transaction['message'] = 'Transaction: Authorised';
-                            if (($data["state"] === 'PARTIALLY_REFUNDED'
-                                 || $data["state"] === 'PURCHASED') && $data["action"] !== 'SALE'
-                                && $data["action"] !== 'AUTH'
-                            ) {
-                                $transaction['refund_button'] = true;
-                            }
-                            break;
-                        case 'voidId':
-                            $transaction['message'] = 'Transaction: Auth Reversed';
-                            break;
-                        default:
-                            break;
-                    }
-                    $data['transactions'][] = $transaction;
+                    $customerTransaction = $this->model_extension_ngenius_payment_ngenius->getCustomerTransaction(
+                        $this->request->get['order_id']
+                    );
                 }
             }
+
+            foreach ($customerTransaction as $key => $transaction) {
+                $jsonData = json_decode($transaction['description'], true);
+                if ($jsonData) {
+                    foreach ($jsonData as $key => $value) {
+                        ValueFormatter::formatCurrencyDecimals($data['currency'], $transaction['amount']);
+
+                        $transaction['amount'] = $data['currency'] . $transaction['amount'];
+                        $transaction['id']     = $value;
+                        switch ($key) {
+                            case 'captureId':
+                                $transaction['message'] = 'Transaction: Captured';
+                                if (
+                                    $data['state'] === 'CAPTURED'
+                                    || $data["state"] === 'PARTIALLY_REFUNDED'
+                                    || $data["state"] === 'PURCHASED'
+                                ) {
+                                    $transaction['refund_button'] = true;
+                                }
+                                break;
+                            case 'refundedId':
+                                $transaction['message'] = 'Transaction: Refunded';
+                                break;
+                            case 'AuthId':
+                                $transaction['message'] = 'Transaction: Authorised';
+                                if (($data["state"] === 'PARTIALLY_REFUNDED'
+                                     || $data["state"] === 'PURCHASED') && $data["action"] !== 'SALE'
+                                    && $data["action"] !== 'AUTH'
+                                ) {
+                                    $transaction['refund_button'] = true;
+                                }
+                                break;
+                            case 'voidId':
+                                $transaction['message'] = 'Transaction: Auth Reversed';
+                                break;
+                            default:
+                                break;
+                        }
+                        $data['transactions'][] = $transaction;
+                    }
+                }
+            }
+
+            $data['max_refund_amount']  = $data['captured_amt'];
+            $data['max_capture_amount'] = $data['amount'];
+            $data['amount']             = $data['currency'] . $data['amount'];
+            $data['captured_amt']       = $data['currency'] . $data['captured_amt'];
+            $data['is_authorised']      = $ngenius::NG_AUTHORISED === $data['status'];
+            $data['user_token']         = $this->session->data['user_token'];
+            $data['pbl_cancel_url']     = true;
+
+            if ($data['status'] === $ngenius::NG_COMPLETE || $data['status'] === 'Canceled' ||
+                $data['status'] === $ngenius::NG_FAILED) {
+                $data['pbl_cancel_url'] = null;
+            }
+
+            $this->response->setOutput($this->load->view('extension/ngenius/payment/ngenius_order_ajax', $data));
+        } else {
+            $opencartOrder                 = $this->model_extension_ngenius_payment_ngenius->getOpencartOrder(
+                $this->request->get['order_id']
+            );
+            $data['amount']                = $opencartOrder['total'];
+            $data['expiry_date']           = 3;
+            $data['payment_attempt']       = 3;
+            $data['order_id']              = $opencartOrder['order_id'];
+            $data['currency']              = $opencartOrder['currency_code'];
+            $data['order_amount_input_id'] = $opencartOrder['order_id'];
+            $data['nonce']                 = bin2hex(random_bytes(16));
+            $data['user_token']            = $this->session->data['user_token'];
+
+            $this->response->setOutput($this->load->view('extension/ngenius/order/ngenius_manual_order_ajax', $data));
+        }
+    }
+
+    public function sendPaybyLink(): void
+    {
+        $this->load->language(self::EXTENSION_DIR);
+        $this->load->model(self::EXTENSION_DIR);
+
+        $json            = [];
+        $invoice         = [];
+        $order_id        = $this->request->post['order_id'] ?? 0;
+        $amount          = $this->request->post['amount'] ?? '';
+        $expiry_date     = $this->request->post['expiry_date'] ?? 3; // Default expiry date is 3 days
+        $payment_attempt = $this->request->post['payment_attempt'] ?? 0;
+        $logger          = new Log('ngenius.log');
+
+        if (!$order_id || !$amount) {
+            $json['error'] = 'Order ID and amount are required.';
+        } else {
+            // Success response
+            $opencartOrder = $this->model_extension_ngenius_payment_ngenius->getOpencartOrder($order_id);
+            $invoiceData   = $this->prepareData($opencartOrder, $amount, $expiry_date, $payment_attempt);
+            try {
+                $invoice = $this->getInvoiceOrder($opencartOrder, $invoiceData);
+            } catch (\Exception $e) {
+                $logger->write('N-Genius API Error: ' . $e->getMessage());
+            }
+
+            if (!$this->isValidResponse($invoice)) {
+                $json['error'] = 'Invalid response from Ngenius API.';
+                $logger->write('Invalid invoice response: ' . print_r($invoice, true));
+            } else {
+                $json['success'] = 'Pay by Link sent successfully.';
+            }
         }
 
-        $data['max_refund_amount']  = $data['captured_amt'];
-        $data['max_capture_amount'] = $data['amount'];
-        $data['amount']             = $data['currency'] . $data['amount'];
-        $data['captured_amt']       = $data['currency'] . $data['captured_amt'];
-        $data['is_authorised']      = $ngenius::NG_AUTHORISED === $data['status'];
-        $data['user_token']         = $this->session->data['user_token'];
-        $this->response->setOutput($this->load->view('extension/ngenius/payment/ngenius_order_ajax', $data));
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json));
+    }
+
+    public function prepareData($opencartOrder, $amount, $expiry, $paymentAttempt): array
+    {
+        $this->load->model('setting/setting');
+
+        $order_id = (int)$opencartOrder['order_id'];
+        $query    = $this->db->query(
+            "SELECT name, quantity, price FROM `" . DB_PREFIX . "order_product` WHERE order_id = '" . $order_id . "'"
+        );
+
+        $items           = [];
+        $transactionType = $this->config->get('payment_ngenius_payment_action');
+        foreach ($query->rows as $row) {
+            $items[] = [
+                'description' => $row['quantity'] . ' x ' . $row['name'],
+                'totalPrice'  => [
+                    'currencyCode' => $opencartOrder['currency_code'],
+                    'value'        => (int)($row['price'] * 100)
+                ],
+                'quantity'    => (int)$row['quantity'],
+            ];
+        }
+
+        return [
+            'firstName'              => $opencartOrder['firstname'],
+            'lastName'               => $opencartOrder['lastname'],
+            'email'                  => $opencartOrder['email'],
+            'emailSubject'           => 'Pay for your order',
+            'transactionType'        => strtoupper($transactionType),
+            'total'                  => [
+                'currencyCode' => $opencartOrder['currency_code'],
+                'value'        => ValueFormatter::floatToIntRepresentation(
+                    $opencartOrder['currency_code'],
+                    $amount
+                )
+            ],
+            'invoiceExpiryDate'      => date('Y-m-d\TH:i:s', strtotime('+' . $expiry . ' days')),
+            'paymentAttempts'        => $paymentAttempt,
+            'merchantOrderReference' => $opencartOrder['order_id'],
+            'message'                => 'Thank you for your order',
+            'items'                  => $items,
+            'redirectUrl'            => filter_var(
+                HTTP_CATALOG . 'index.php?route=extension/ngenius/payment/ngenius',
+                FILTER_SANITIZE_URL
+            )
+        ];
+    }
+
+    public function getInvoiceOrder($opencartOrder, $invoiceData)
+    {
+        $logger  = new Log('ngenius.log');
+        $ngenius = new \Opencart\System\Library\Ngenius($this->registry);
+        $request = new Request($ngenius);
+
+        // Get token
+        $tokenUrl     = $this->getNgeniusUrl('token');
+        $httpTransfer = new NgeniusHTTPTransfer($tokenUrl);
+        $httpTransfer->setTokenHeaders($ngenius->getApiKey());
+        $httpTransfer->setHttpVersion($ngenius->getHttpVersion());
+
+        $tokenRequestData = $request->tokenRequest();
+        $httpTransfer->build($tokenRequestData);
+
+        $token = NgeniusHTTPCommon::placeRequest($httpTransfer);
+        $token = Validate::tokenValidate($token);
+
+        //Prepare invoice data
+        $invoiceUrl   = $this->getNgeniusUrl('invoice');
+        $httpTransfer = new NgeniusHTTPTransfer($invoiceUrl);
+
+        $httpTransfer->setInvoiceHeaders($token);
+        $httpTransfer->setMethod('POST');
+        $httpTransfer->setData($invoiceData);
+
+        // STEP 3: Send invoice request
+        $response      = NgeniusHTTPCommon::placeRequest($httpTransfer);
+        $responseData  = json_decode($response, true);
+        $state         = 'STARTED';
+        $status        = $ngenius::NG_PBL_PENDING;
+        $expiryDateRaw = $responseData['invoiceExpiryDate'] ?? null;
+        $expiryDate    = date('Y-m-d H:i:s', strtotime($expiryDateRaw)); // Convert to MySQL DATETIME
+        $data          = [
+            'state'       => $state,
+            'status'      => $status,
+            'expiry_date' => $expiryDate,
+            'action'      => $invoiceData['transactionType'],
+        ];
+
+        //Add order to Ngenius table
+        $this->addOrderToNgeniusTable($responseData['orderReference'], $opencartOrder, $data, 'invoice');
+
+        if (isset($responseData['errors'])) {
+            $logger->write('N-Genius API Error: ' . $response["errors"][0]["message"]);
+            throw new \Exception($response['message']);
+        }
+
+        return $responseData;
+    }
+
+    public function isValidResponse(array $response): bool
+    {
+        return isset($response['orderReference']) && isset($response['transactionType']);
+    }
+
+    public function getNgeniusUrl(string $type = 'invoice'): string
+    {
+        $environment = $this->config->get('payment_ngenius_environment') ?? 'sandbox';
+        $outletRef   = $this->config->get('payment_ngenius_outlet_ref');
+
+        $baseUrl = ($environment === 'live')
+            ? $this->config->get('payment_ngenius_live_api_url')
+            : $this->config->get('payment_ngenius_uat_api_url');
+
+        if ($type === 'token') {
+            return $baseUrl . '/identity/auth/access-token';
+        }
+
+        // Default to invoice endpoint
+        return "{$baseUrl}/invoices/outlets/{$outletRef}/invoice";
+    }
+
+    /**
+     * @param $reference
+     * @param $order
+     *
+     * @return void
+     */
+    public function addOrderToNgeniusTable($reference, $order, $dataArray, $transactionType = ''): void
+    {
+        $logger  = new Log('ngenius.log');
+        $ngenius = new \Opencart\System\Library\Ngenius($this->registry);
+
+        $data['order_id']  = $order['order_id'];
+        $data['currency']  = empty($transactionType) ? $order['currency'] : $order['currency_code'];
+        $data['amount']    = empty($transactionType) ? $order['amount'] : $order['total'];
+        $data['reference'] = $reference;
+        $data['action']    = $dataArray['action'];
+        $data['state']     = $dataArray['state'];
+        $data['status']    = $dataArray['status'];
+
+        $this->load->model(self::EXTENSION_DIR);
+
+        $status_id = $ngenius->getOrderStatusId($this, $dataArray['status']);
+        $msg       = 'PayByLink was sent to customer.';
+
+        if ($transactionType === 'invoice') {
+            $data['expiry_date'] = $dataArray['expiry_date'];
+
+            try {
+                $this->model_extension_ngenius_payment_ngenius->addOrderHistory(
+                    $order['order_id'],
+                    $status_id,
+                    $msg,
+                    false
+                );
+            } catch (Exception $ex) {
+                echo '<p>Please check your SMTP configuration!</p>';
+                echo $ex->getMessage();
+                exit;
+            }
+        }
+
+        try {
+            $this->model_extension_ngenius_payment_ngenius->insertOrderInfo($data);
+        } catch (Exception $ex) {
+            $logger->write('N-Genius API Error: ' . $ex->getMessage());
+            exit;
+        }
+    }
+
+    public function cancelPBLOrder(): void
+    {
+        $json = [];
+
+        if (!empty($this->request->post['reference'])) {
+            $ngenius   = new \Opencart\System\Library\Ngenius($this->registry);
+            $reference = $this->request->post['reference'];
+            $action    = $this->request->post['action'];
+            $url       = $ngenius->getOrderCancelUrl($reference);
+            $token     = $this->getAccessToken();
+
+            $httpTransfer = new NgeniusHTTPTransfer($url);
+            $httpTransfer->setPaymentHeaders($token);
+            $httpTransfer->setHttpVersion($ngenius->getHttpVersion());
+            $httpTransfer->setMethod('PUT');
+
+            // Now send the request
+            $response     = NgeniusHTTPCommon::placeRequest($httpTransfer);
+            $responseData = json_decode($response, true);
+
+            if (!empty($responseData['reference'])) {
+                $this->load->model(self::EXTENSION_DIR);
+                $order_id = $responseData['merchantOrderReference'];
+
+                $order = $this->model_extension_ngenius_payment_ngenius->getOrder($order_id);
+
+                if ($responseData['_embedded']['payment'][0]['state'] === 'CANCELLED') {
+                    $state  = 'Canceled';
+                    $status = 'Canceled';
+                    $data   = [
+                        'state'  => $state,
+                        'status' => $status,
+                        'action' => $action,
+                    ];
+
+                    $this->addOrderToNgeniusTable($reference, $order, $data);
+                }
+
+                // Update the order status in the database
+                $this->model_extension_ngenius_payment_ngenius->updateOrderStateAndStatus($order_id, $state, $status);
+
+                $status_id = $ngenius->getOrderStatusId($this, $status);
+                $msg       = 'PayByLink Order Canceled.';
+
+                try {
+                    $this->model_extension_ngenius_payment_ngenius->addOrderHistory(
+                        $order_id,
+                        $status_id,
+                        $msg,
+                        false
+                    );
+                } catch (Exception $ex) {
+                    echo '<p>Please check your SMTP configuration!</p>';
+                    echo $ex->getMessage();
+                    exit;
+                }
+                $json['success'] = 'PBL cancelled successfully.';
+            } else {
+                $json['error'] = 'Failed to cancel PBL order. Response: ' . json_encode($response);
+            }
+        } else {
+            $json['error'] = 'Reference is missing.';
+        }
+
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json));
+    }
+
+    public function getAccessToken(): string
+    {
+        $ngenius      = new \Opencart\System\Library\Ngenius($this->registry);
+        $request      = new Request($ngenius);
+        $httpTransfer = new NgeniusHTTPTransfer("");
+
+        $httpTransfer->setTokenHeaders($ngenius->getApiKey());
+        $httpTransfer->setHttpVersion($ngenius->getHttpVersion());
+
+        $httpTransfer->build($request->tokenRequest());
+
+        $token = NgeniusHTTPCommon::placeRequest($httpTransfer);
+
+        if (is_string($token)) {
+            $token = Validate::tokenValidate($token);
+        }
+
+        return $token;
     }
 
     /**
@@ -717,5 +1036,26 @@ class Ngenius extends Controller
         }
 
         return $json;
+    }
+
+    public function updateTotal(): void
+    {
+        $json = [];
+
+        $order_id = (int)($this->request->post['order_id'] ?? 0);
+        $total    = (float)($this->request->post['total'] ?? 0);
+
+        if ($order_id > 0) {
+            $this->db->query(
+                "UPDATE `" . DB_PREFIX . "order` SET total = '" . $total . "' WHERE order_id = '" . $order_id . "'"
+            );
+            $json['success'] = true;
+        } else {
+            $json['success'] = false;
+            $json['error']   = 'Missing or invalid order_id.';
+        }
+
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json));
     }
 }

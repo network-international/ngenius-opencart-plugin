@@ -1,7 +1,7 @@
 <?php
 
 // Heading
-$_['heading_title'] = 'N-Genius Online by Network - 1.1.2';
+$_['heading_title'] = 'N-Genius Online by Network - 1.2.0';
 
 // Text
 $_['text_extension'] = 'Extensions';
@@ -97,3 +97,21 @@ $_['text_na']        = 'N/A';
 $_['text_confirm_void']    = 'Are you sure you want to void this transaction?';
 $_['text_confirm_capture'] = 'Are you sure you want to capture';
 $_['text_confirm_refund']  = 'Are you sure you want to refund';
+
+// Manual Order
+// Text
+$_['text_extension']     = 'Extensions';
+$_['text__header_title'] = 'Pay by link';
+
+// Entry
+$_['text_expiry_date']     = ' Expiry date (days)';
+$_['text_payment_attempt'] = 'Payment attempt widget';
+$_['text_amount_input']    = 'Amount';
+
+//column name
+$_['column_send_pbl'] = 'Send Pay By Link';
+$_['column_cancel']   = 'Cancel PBL Order';
+
+// Button
+$_['button_pbl']    = 'Send PBL';
+$_['button_cancel'] = 'Cancel PBL';

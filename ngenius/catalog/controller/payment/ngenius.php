@@ -218,6 +218,12 @@ class Ngenius extends Controller
             AND (payment_id ='' OR payment_id ='null');"
         );
 
+        $pblOrders = $this->model_extension_ngenius_payment_ngenius->fetchOrder(
+            "status = '" . NGeniusTools::NG_PBL_PENDING . "' AND DATE_ADD(created_at, interval 60 MINUTE) < NOW()
+            AND (payment_id ='' OR payment_id ='null');"
+        );
+
         $this->model_extension_ngenius_payment_ngenius->processCron($orders);
+        $this->model_extension_ngenius_payment_ngenius->processPBLCron($pblOrders);
     }
 }
