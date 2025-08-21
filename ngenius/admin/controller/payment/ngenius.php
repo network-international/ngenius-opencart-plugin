@@ -494,7 +494,7 @@ class Ngenius extends Controller
         $state         = 'STARTED';
         $status        = $ngenius::NG_PBL_PENDING;
         $expiryDateRaw = $responseData['invoiceExpiryDate'] ?? null;
-        $expiryDate    = date('Y-m-d H:i:s', strtotime($expiryDateRaw)); // Convert to MySQL DATETIME
+        $expiryDate    = $expiryDateRaw ? date('Y-m-d H:i:s', strtotime($expiryDateRaw)) : null; // Convert to MySQL DATETIME
         $data          = [
             'state'       => $state,
             'status'      => $status,
@@ -503,11 +503,13 @@ class Ngenius extends Controller
         ];
 
         //Add order to Ngenius table
-        $this->addOrderToNgeniusTable($responseData['orderReference'], $opencartOrder, $data, 'invoice');
+        if (isset($responseData['orderReference'])) {
+            $this->addOrderToNgeniusTable($responseData['orderReference'], $opencartOrder, $data, 'invoice');
+        }
 
         if (isset($responseData['errors'])) {
-            $logger->write('N-Genius API Error: ' . $response["errors"][0]["message"]);
-            throw new \Exception($response['message']);
+            $logger->write('N-Genius API Error: ' . $responseData["errors"][0]["message"]);
+            throw new \Exception($responseData['message'] ?? 'Unknown error');
         }
 
         return $responseData;
