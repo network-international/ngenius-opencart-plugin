@@ -31,7 +31,15 @@
             <div class="panel-body bg-white">
                 <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-payment"
                       class="form-horizontal py-4">
-
+                    <div class="row form-group mb-3">
+                        <div class="col-sm-12">
+                            <div {{ id_text_align }}>
+                                Don’t have credentials yet? Click
+                                <a href="{{ ngenius_onboarding_url }}" target="_blank" {{ url_text_style }}>here</a>
+                                to get started with Network International and gain access to N-Genius<sup>TM</sup> payments for OpenCart.
+                            </div>
+                        </div>
+                    </div>
                     <div class="row align-items-center form-group">
                         <label class="d-flex flex-row-reverse col-sm-2 col-form-label control-label"
                                for="input-status">{{ status }}</label>

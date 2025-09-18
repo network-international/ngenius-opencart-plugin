@@ -1,7 +1,7 @@
 <?php
 
 // Heading
-$_['heading_title'] = 'N-Genius Online by Network - 1.2.0';
+$_['heading_title'] = 'N-Genius Online by Network - 1.2.1';
 
 // Text
 $_['text_extension'] = 'Extensions';
@@ -115,3 +115,7 @@ $_['column_cancel']   = 'Cancel PBL Order';
 // Button
 $_['button_pbl']    = 'Send PBL';
 $_['button_cancel'] = 'Cancel PBL';
+
+$_['ngenius_onboarding_url'] = 'https://www.network.ae/en/merchant-solutions/ecommerce-payments/plugins?utm_source=OpenCart&utm_medium=referral&utm_content=link&utm_term=partner-plugins&utm_campaign=opencart-partner';
+$_['id_text_align'] = 'style="margin-left: calc(100% / 12 * 1.6);"';
+$_['url_text_style'] = 'style="font-weight:bold;color:#007bff;text-decoration:underline;"';
