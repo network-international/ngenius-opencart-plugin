@@ -1,5 +1,11 @@
 # Changelog
 
+## [[1.2.1]](https://github.com/network-international/ngenius-opencart-plugin/releases/tag/1.2.1)
+
+### Added
+
+- Onboarding Link in Plugin Interface: Added an accessible link within the plugin interface that redirects merchants to the onboarding site for e-commerce payment solutions. The link is prominently placed in the plugin's settings panel, ensuring easy access for merchants to initiate the onboarding process.
+
 ## [[1.2.0]](https://github.com/network-international/ngenius-opencart-plugin/releases/tag/1.2.0)
 
 ### Added
