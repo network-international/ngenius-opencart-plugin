@@ -1,7 +1,7 @@
 <?php
 
 // Heading
-$_['heading_title'] = 'N-Genius Online by Network - 1.2.1';
+$_['heading_title'] = 'N-Genius Online by Network - 1.2.2';
 
 // Text
 $_['text_extension'] = 'Extensions';

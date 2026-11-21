@@ -1,5 +1,11 @@
 # Changelog
 
+## [[1.2.2]](https://github.com/network-international/ngenius-opencart-plugin/releases/tag/1.2.2)
+
+### Fixed
+
+- Continue Shopping Link: The hosted payment page now shows a Continue Shopping link beneath the Pay button, returning the customer to the store home page.
+
 ## [[1.2.1]](https://github.com/network-international/ngenius-opencart-plugin/releases/tag/1.2.1)
 
 ### Added

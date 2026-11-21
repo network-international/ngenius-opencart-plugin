@@ -104,6 +104,11 @@ class Request
                         FILTER_SANITIZE_URL
                     ),
                     'skipConfirmationPage' => true,
+                    'cancelUrl'            => filter_var(
+                        $this->library->url->link('common/home', '', true),
+                        FILTER_SANITIZE_URL
+                    ),
+                    'cancelText'           => 'Continue Shopping',
                 ],
                 'outletId'               => $outletReferenceId,
                 'billingAddress'         => [
